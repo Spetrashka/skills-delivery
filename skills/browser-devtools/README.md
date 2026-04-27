@@ -2,37 +2,44 @@
 
 Connect to a running Chrome/Chromium browser via CDP (Chrome DevTools Protocol) to inspect styles, capture logs, get JS errors, and evaluate expressions live on a development page.
 
-## Launching the Browser
+## Setup
 
-### Chrome
+No npm dependencies required — uses only Node.js built-ins.
+
+**Requirements:**
+
+- **Chrome or Chromium** — Firefox 129+ dropped CDP support
+- **Node.js 22+** for native WebSocket support (on Node 18–21: `npm install -g ws`, auto-detected by the script)
+
+### Launch browser with remote debugging
 
 ```bash
+# Chrome
 google-chrome --remote-debugging-port=9222 --user-data-dir=$HOME/.chrome-debug-profile http://localhost:8080 &
-```
 
-### Chromium
-
-```bash
+# Chromium
 chromium-browser --remote-debugging-port=9222 --user-data-dir=$HOME/.chrome-debug-profile http://localhost:8080 &
 ```
 
 > **Important:** Use `$HOME/.chrome-debug-profile` (not `/tmp/...`).
-> `/tmp` is cleared on reboot — using it means your login session (cookies, auth tokens) will be lost after every restart.
-> `$HOME/.chrome-debug-profile` is persistent: log in once and the session survives reboots.
+> `/tmp` is cleared on reboot — your login session will be lost. `$HOME/.chrome-debug-profile` is persistent.
 
-### Verify the browser is running
+### Verify
 
 ```bash
 curl -s http://localhost:9222/json/version | head -5
 ```
 
-If this returns nothing, the browser is not running with remote debugging enabled — restart it using the command above.
+### Environment variables (optional)
+
+| Variable   | Default     | Description               |
+| ---------- | ----------- | ------------------------- |
+| `CDP_HOST` | `localhost` | Browser host              |
+| `CDP_PORT` | `9222`      | Browser remote debug port |
 
 ---
 
 ## Usage
-
-All commands run through `browser-devtools.mjs`:
 
 ```bash
 node ./scripts/browser-devtools.mjs <command> [args]
@@ -51,26 +58,9 @@ node ./scripts/browser-devtools.mjs <command> [args]
 ### Examples
 
 ```bash
-# List open tabs
 node ./scripts/browser-devtools.mjs list
-
-# Capture console logs for 5 seconds
 node ./scripts/browser-devtools.mjs logs 0 5000
-
-# Get JS errors
 node ./scripts/browser-devtools.mjs errors 0
-
-# Inspect computed styles of a button
 node ./scripts/browser-devtools.mjs styles-raw ".qxt-button--primary" 0
-
-# Evaluate an expression
 node ./scripts/browser-devtools.mjs eval "document.title" 0
 ```
-
----
-
-## Requirements
-
--   **Chrome or Chromium** — Firefox 129+ dropped CDP support
--   **Node.js 22+** for native WebSocket support
-    On Node 18–21: `npm install -g ws` (auto-detected by the script)
