@@ -4,17 +4,42 @@ Reusable Claude Code skills for browser debugging, GitHub PR management, and Jir
 
 ## Installation
 
+### Install all skills
+
 ```bash
-npx skills add Spetrashka/skills-delivery
+npx skills add Spetrashka/skills-delivery --skill '*'
 ```
 
-This copies the selected skills into your project's `.agents/skills/` directory.
-
-## Setup
-
-After adding skills, install their dependencies:
+### Install specific skills
 
 ```bash
+# Only Jira
+npx skills add Spetrashka/skills-delivery --skill jira
+
+# Only GitHub PR
+npx skills add Spetrashka/skills-delivery --skill github-pr
+
+# Only browser devtools
+npx skills add Spetrashka/skills-delivery --skill browser-devtools
+
+# Mix and match
+npx skills add Spetrashka/skills-delivery --skill jira --skill github-pr
+```
+
+### List available skills
+
+```bash
+npx skills add Spetrashka/skills-delivery --list
+```
+
+Skills are installed into your project's `.agents/skills/` directory.
+
+## Post-install Setup
+
+Skills that have npm dependencies (`github-pr`, `jira`) need a one-time install after being added.
+
+```bash
+# Auto-install deps for all added skills
 npx skills-delivery-setup
 ```
 
@@ -25,7 +50,7 @@ cd .agents/skills/github-pr && npm install
 cd .agents/skills/jira && npm install
 ```
 
-`browser-devtools` has zero npm dependencies (uses only Node.js built-ins).
+`browser-devtools` has zero npm dependencies (uses only Node.js built-ins) — no setup needed.
 
 ## Included Skills
 
