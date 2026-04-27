@@ -20,6 +20,14 @@ npx skills add Spetrashka/skills-delivery --skill jira --skill github-pr
 npx skills add Spetrashka/skills-delivery --list
 ```
 
+## Setup
+
+Some skills have npm dependencies. After installing, run the setup script to install them all at once:
+
+```bash
+npx skills-delivery-setup
+```
+
 ## Skills
 
 | Skill | Description |
