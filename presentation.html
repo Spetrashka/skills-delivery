@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skills: Making AI Do Things Safely</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/black.css">
+    <style>
+        .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
+        .reveal pre { font-size: 0.45em; }
+        .reveal code { color: #42b983; }
+        .comparison-table { font-size: 0.65em; width: 100%; }
+        .comparison-table td, .comparison-table th { padding: 10px; border: 1px solid #555; }
+        .pros { color: #4CAF50; }
+        .cons { color: #f44336; }
+        .highlight { color: #42b983; }
+        .box { background: #2a2a2a; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .warning { color: #ff9800; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            
+            <!-- Slide 1: Title -->
+            <section>
+                <h1>AI Skills</h1>
+                <h3>Making AI Do Things Without Destroying Your System</h3>
+                <p><small>Secure, transparent, and controllable AI agent access</small></p>
+            </section>
+
+            <!-- Slide 2: The Problem -->
+            <section>
+                <h2>The Problem</h2>
+                <div style="text-align: left;">
+                    <p class="warning" style="font-size: 1.2em;">❌ "Let AI deploy everything itself!"</p>
+                    <br><br>
+                    <p><strong>Common disasters:</strong></p>
+                    <ul>
+                        <li>Dropped databases</li>
+                        <li>Unknown npm packages with root access</li>
+                        <li>Supply chain attacks</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Slide 3: What are Skills? -->
+            <section>
+                <h2>What are Skills?</h2>
+                <div class="box" style="font-size: 1.1em;">
+                    <p><strong>Your own local scripts</strong></p>
+                    <p>Simple, transparent, controllable</p>
+                    <br>
+                    <div style="text-align: left;">
+                        <p>📁 A folder on your machine</p>
+                        <p>📄 <code>SKILL.md</code> - instructions for AI</p>
+                        <p>⚙️ <code>script.sh/.js/.py</code> - your code</p>
+                    </div>
+                </div>
+                <br>
+                <p class="highlight">AI runs script → Gets output → Done</p>
+            </section>
+
+            <!-- Slide 4: Why Skills? -->
+            <section>
+                <h2>Why Skills?</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <h3 class="pros">✓ Key Benefits</h3>
+                    <ul>
+                        <li><strong>100% transparent</strong> - you read every line</li>
+                        <li><strong>Zero supply chain risk</strong> - no third-party code</li>
+                        <li><strong>No background daemons</strong> - runs & terminates</li>
+                        <li><strong>Full control</strong> - local AND external APIs</li>
+                        <li><strong>Wide support</strong> - works in most AI IDEs</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Slide 5: Skills Can Do Everything -->
+            <section>
+                <h2>What Can Skills Do?</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <p class="highlight"><strong>Everything!</strong></p>
+                    <br>
+                    <ul>
+                        <li>✅ Local tasks (tests, builds, formatting)</li>
+                        <li>✅ External APIs (GitHub, Jira, Figma)</li>
+                        <li>✅ Database operations</li>
+                        <li>✅ File operations</li>
+                        <li>✅ Custom workflows</li>
+                        <li>✅ Browser automation</li>
+                    </ul>
+                    <br>
+                    <p>Use <code>curl</code>, <code>fetch</code>, libraries - whatever you need!</p>
+                </div>
+            </section>
+
+            <!-- Slide 6: How Skills Work -->
+            <section>
+                <h2>How Skills Work</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <ol>
+                        <li>AI reads <code>SKILL.md</code> instructions</li>
+                        <li>AI decides to use the skill</li>
+                        <li>Runs your script: <code>bash script.sh</code></li>
+                        <li>Reads output from stdout</li>
+                        <li>Script terminates - done!</li>
+                    </ol>
+                    <br><br>
+                    <p class="highlight">Simple. Transparent. Secure.</p>
+                </div>
+            </section>
+
+            <!-- Slide 7: Skills Example -->
+            <section>
+                <h2>Skills: Real Example</h2>
+                <pre><code class="markdown" style="max-height: 500px;">📁 .skills/audit/
+  ├── SKILL.md
+  └── audit.sh
+
+# SKILL.md
+## Audit Project
+When asked to audit the project, run:
+```bash
+bash .skills/audit/audit.sh
+```
+
+# audit.sh
+#!/bin/bash
+echo "Starting security audit..."
+npm audit --production
+eslint . --format json
+echo "Audit complete"
+</code></pre>
+                <p style="font-size: 0.8em;">AI reads SKILL.md → Runs audit.sh → Gets results → Done</p>
+            </section>
+
+            <!-- Slide 8: Security Benefits -->
+            <section>
+                <h2>Security Benefits</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <h3 class="pros">✓ Why Skills are Safer</h3>
+                    <ul>
+                        <li>You audit every line of code</li>
+                        <li>No third-party dependencies</li>
+                        <li>No background processes</li>
+                        <li>No unknown code running on your machine</li>
+                        <li>Team can review all skills</li>
+                    </ul>
+                    <br>
+                    <p class="highlight">Perfect for security-conscious teams</p>
+                </div>
+            </section>
+
+            <!-- Slide 9: Skills Examples -->
+            <section>
+                <h2>Skills Examples</h2>
+                <div style="text-align: left; font-size: 1em;">
+                    <p><strong>Local tasks:</strong></p>
+                    <ul>
+                        <li>Audit (npm audit + ESLint)</li>
+                        <li>Test runner with coverage</li>
+                        <li>Code formatter (Prettier)</li>
+                        <li>Git safe commit</li>
+                    </ul>
+                    <br>
+                    <p><strong>External APIs:</strong></p>
+                    <ul>
+                        <li>GitHub: Create PRs, issues</li>
+                        <li>Jira: Create/update tickets</li>
+                        <li>Figma: Export designs</li>
+                        <li>Your internal APIs</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Slide 10: IDE Support -->
+            <section>
+                <h2>IDE Support</h2>
+                <div style="font-size: 1.2em;">
+                    <p class="highlight">Skills work in most AI IDEs:</p>
+                    <br><br>
+                    <ul style="list-style: none;">
+                        <li>✅ Claude Code (native)</li>
+                        <li>✅ GitHub Copilot</li>
+                        <li>✅ Cursor</li>
+                        <li>✅ Windsurf</li>
+                        <li>✅ Roo Code</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Slide 11: Getting Started -->
+            <section>
+                <h2>Getting Started</h2>
+                <pre><code class="bash" style="max-height: 450px;"># 1. Create folder
+mkdir -p .skills/hello
+
+# 2. Write SKILL.md
+cat > .skills/hello/SKILL.md << 'EOF'
+# Hello Skill
+Simple test skill.
+## Usage
+bash .skills/hello/run.sh
+EOF
+
+# 3. Write script
+cat > .skills/hello/run.sh << 'EOF'
+#!/bin/bash
+echo "Hello from Skills!"
+echo "Time: $(date)"
+EOF
+
+chmod +x .skills/hello/run.sh
+</code></pre>
+            </section>
+
+            <!-- Slide 12: External API Example -->
+            <section>
+                <h2>External API Example</h2>
+                <pre><code class="bash" style="max-height: 450px;"># .skills/github-pr/create.sh
+#!/bin/bash
+
+TITLE=$1
+BODY=$2
+
+curl -X POST \
+  -H "Authorization: token $GITHUB_TOKEN" \
+  -H "Content-Type: application/json" \
+  https://api.github.com/repos/owner/repo/pulls \
+  -d "{
+    \"title\": \"$TITLE\",
+    \"body\": \"$BODY\",
+    \"head\": \"feature-branch\",
+    \"base\": \"main\"
+  }"
+</code></pre>
+                <p class="highlight">Simple. Transparent. You control it.</p>
+            </section>
+
+            <!-- Slide 13: Real Workflow -->
+            <section>
+                <h2>Real Workflow</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <p><strong>Task:</strong> "Audit code and create Jira ticket"</p>
+                    <br><br>
+                    <p><strong>1. Skill:</strong> Run audit locally</p>
+                    <p><strong>2. Skill:</strong> Parse results</p>
+                    <p><strong>3. Skill:</strong> Call Jira API</p>
+                    <p><strong>4. Skill:</strong> Create ticket</p>
+                    <br><br>
+                    <p class="highlight">All in YOUR code. All transparent. All secure.</p>
+                </div>
+            </section>
+
+            <!-- Slide 14: Best Practices -->
+            <section>
+                <h2>Best Practices</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <h3 class="pros">✓ DO:</h3>
+                    <ul>
+                        <li>Keep skills simple and focused</li>
+                        <li>Document in SKILL.md clearly</li>
+                        <li>Handle errors gracefully</li>
+                        <li>Use environment variables for secrets</li>
+                        <li>Test skills manually first</li>
+                    </ul>
+                    <br>
+                    <h3 class="cons">✗ DON'T:</h3>
+                    <ul>
+                        <li>Hardcode credentials in scripts</li>
+                        <li>Make skills too complex</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Slide 15: Why This Matters -->
+            <section>
+                <h2>Why This Matters</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <ul>
+                        <li><strong>Security:</strong> Company policies satisfied</li>
+                        <li><strong>Transparency:</strong> Everyone can audit</li>
+                        <li><strong>Control:</strong> No black boxes</li>
+                        <li><strong>Flexibility:</strong> Build what YOU need</li>
+                        <li><strong>Team ownership:</strong> Skills belong to us</li>
+                    </ul>
+                    <br><br>
+                    <p class="highlight">Perfect for enterprise environments</p>
+                </div>
+            </section>
+
+            <!-- Slide 16: Team Skills Library -->
+            <section>
+                <h2>Building Team Skills Library</h2>
+                <div style="text-align: left; font-size: 1.1em;">
+                    <p><strong>Start with essentials:</strong></p>
+                    <br>
+                    <ul>
+                        <li>✅ Code quality (lint, audit, format)</li>
+                        <li>✅ Testing (unit, integration, e2e)</li>
+                        <li>✅ Git operations (safe commit, branch)</li>
+                        <li>✅ API integrations (Jira, GitHub)</li>
+                        <li>✅ Deployment (staging, production)</li>
+                    </ul>
+                    <br>
+                    <p class="highlight">Build once, use everywhere</p>
+                </div>
+            </section>
+
+            <!-- Slide 17: Next Steps -->
+            <section>
+                <h2>Next Steps</h2>
+                <div style="text-align: left; font-size: 1.2em;">
+                    <ol>
+                        <li>Create <code>.skills/</code> folder</li>
+                        <li>Start with 2-3 simple skills</li>
+                        <li>Test with your AI IDE</li>
+                        <li>Share with team</li>
+                        <li>Iterate and improve</li>
+                    </ol>
+                    <br><br>
+                    <p class="highlight">Start small. Build incrementally.</p>
+                </div>
+            </section>
+
+            <!-- Slide 18: Key Takeaways -->
+            <section>
+                <h2>Key Takeaways</h2>
+                <div style="text-align: left; font-size: 1.2em;">
+                    <ol>
+                        <li>Skills = Your scripts, your control</li>
+                        <li>100% transparent and secure</li>
+                        <li>Works with local AND external APIs</li>
+                        <li>Wide IDE support</li>
+                        <li>Perfect for enterprise</li>
+                    </ol>
+                    <br><br>
+                    <p class="highlight">Simple. Safe. Powerful. 🎯</p>
+                </div>
+            </section>
+
+            <!-- Slide 19: Resources -->
+            <section>
+                <h2>Learn More</h2>
+                <ul style="font-size: 1em;">
+                    <li>📝 <a href="https://goman.live/blog/1776857222227">goman.live/blog/1776857222227</a></li>
+                    <li>🔧 Claude Code - native Skills support</li>
+                    <li>💬 Anthropic Docs - Skills examples</li>
+                    <li>👥 Team - share your skills!</li>
+                </ul>
+                <br><br>
+                <p class="highlight" style="font-size: 1.4em;">Questions?</p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            transition: 'slide',
+            controls: true,
+            progress: true,
+            center: true,
+            touch: true,
+            help: true
+        });
+    </script>
+</body>
+</html>
