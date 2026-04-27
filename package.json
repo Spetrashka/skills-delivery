@@ -1,0 +1,22 @@
+{
+    "name": "skills-delivery",
+    "version": "1.0.0",
+    "description": "Reusable Claude Code skills: browser-devtools, github-pr, jira",
+    "type": "module",
+    "bin": {
+        "skills-delivery-setup": "./bin/setup.js"
+    },
+    "files": [
+        "bin/",
+        "skills/",
+        "index.js"
+    ],
+    "keywords": [
+        "claude-code",
+        "skills",
+        "devtools",
+        "github",
+        "jira"
+    ],
+    "license": "MIT"
+}
