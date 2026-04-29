@@ -315,6 +315,77 @@ async function cmdEval(expression, tabIndex) {
     }
 }
 
+async function cmdDiagnose(tabIndex, durationMs) {
+    const targets = await listTargets();
+    const target = pickTarget(targets, tabIndex);
+    const session = await CDPSession.connect(target.webSocketDebuggerUrl);
+
+    const warnings = [];
+    const errors = [];
+    const exceptions = [];
+
+    try {
+        await session.send('Runtime.enable');
+        await session.send('Log.enable');
+        await session.send('Page.enable');
+
+        session.on('Runtime.consoleAPICalled', params => {
+            const args = params.args.map(a => a.value ?? a.description ?? a.type);
+            if (params.type === 'warning') {
+                warnings.push({ args, timestamp: params.timestamp });
+            } else if (params.type === 'error') {
+                errors.push({ args, timestamp: params.timestamp });
+            }
+        });
+
+        session.on('Log.entryAdded', params => {
+            const entry = {
+                source: params.entry.source,
+                text: params.entry.text,
+                url: params.entry.url,
+                timestamp: params.entry.timestamp,
+            };
+            if (params.entry.level === 'warning') warnings.push(entry);
+            else if (params.entry.level === 'error') errors.push(entry);
+        });
+
+        session.on('Runtime.exceptionThrown', params => {
+            const ex = params.exceptionDetails;
+            exceptions.push({
+                text: ex.text,
+                exception: ex.exception?.description ?? ex.exception?.value,
+                url: ex.url,
+                line: ex.lineNumber,
+                col: ex.columnNumber,
+                timestamp: params.timestamp,
+            });
+        });
+
+        // Reload so all startup warnings/errors fire fresh
+        await session.send('Page.reload');
+
+        await new Promise(resolve => setTimeout(resolve, durationMs));
+
+        const total = warnings.length + errors.length + exceptions.length;
+        console.log(
+            JSON.stringify(
+                {
+                    tabUrl: target.url,
+                    durationMs,
+                    summary: { warnings: warnings.length, errors: errors.length, exceptions: exceptions.length, total },
+                    warnings,
+                    errors,
+                    exceptions,
+                },
+                null,
+                2
+            )
+        );
+    } finally {
+        session.close();
+    }
+}
+
 async function cmdNetworkErrors(tabIndex, durationMs) {
     const targets = await listTargets();
     const target = pickTarget(targets, tabIndex);
@@ -368,6 +439,43 @@ async function cmdNetworkErrors(tabIndex, durationMs) {
         await new Promise(resolve => setTimeout(resolve, durationMs));
 
         console.log(JSON.stringify({ tabUrl: target.url, durationMs, failed }, null, 2));
+    } finally {
+        session.close();
+    }
+}
+
+async function cmdNetworkSnapshot(tabIndex) {
+    const targets = await listTargets();
+    const target = pickTarget(targets, tabIndex);
+    const session = await CDPSession.connect(target.webSocketDebuggerUrl);
+
+    try {
+        await session.send('Runtime.enable');
+        const expression = `
+            (function() {
+                return performance.getEntriesByType('resource')
+                    .filter(r =>
+                        r.responseStatus >= 400 ||
+                        (r.responseStatus === 0 && r.transferSize === 0 && r.decodedBodySize === 0 && r.duration > 0)
+                    )
+                    .map(r => ({
+                        name: r.name,
+                        status: r.responseStatus,
+                        duration: Math.round(r.duration),
+                        initiatorType: r.initiatorType,
+                    }));
+            })()
+        `;
+        const { result, exceptionDetails } = await session.send('Runtime.evaluate', {
+            expression,
+            returnByValue: true,
+        });
+
+        if (exceptionDetails) {
+            console.log(JSON.stringify({ error: exceptionDetails.text }, null, 2));
+        } else {
+            console.log(JSON.stringify({ tabUrl: target.url, failed: result.value }, null, 2));
+        }
     } finally {
         session.close();
     }
@@ -429,6 +537,14 @@ async function main() {
             await cmdNetworkErrors(parseInt(arg1 ?? '0', 10), parseInt(arg2 ?? '8000', 10));
             break;
 
+        case 'network-snapshot':
+            await cmdNetworkSnapshot(parseInt(arg1 ?? '0', 10));
+            break;
+
+        case 'diagnose':
+            await cmdDiagnose(parseInt(arg1 ?? '0', 10), parseInt(arg2 ?? '10000', 10));
+            break;
+
         default:
             console.error(
                 [
@@ -442,7 +558,9 @@ async function main() {
                     '  errors [tabIndex]                 Capture JS errors (waits 3s)',
                     '  eval "<expression>" [tabIndex]    Evaluate JS in the page',
                     '  screenshot [tabIndex]             Save screenshot to /tmp',
-                    '  network-errors [tabIndex] [ms]    Capture failed/errored network requests',
+                    '  network-errors [tabIndex] [ms]    Capture failed/errored network requests (live, CDP)',
+                    '  network-snapshot [tabIndex]        Snapshot already-loaded failed requests (performance API)',
+                    '  diagnose [tabIndex] [ms]            Reload page and capture all warnings+errors+exceptions (default 10000ms)',
                     '',
                     'Environment:',
                     '  CDP_HOST  Browser host (default: localhost)',

@@ -58,6 +58,9 @@ node ./scripts/browser-devtools.mjs <command> [args]
 | `errors [tabIndex]`                | Get JS errors from the page                  | `... errors`                |
 | `eval <expression> [tabIndex]`     | Evaluate JS in the page                      | `... eval "document.title"` |
 | `screenshot [tabIndex]`            | Capture a screenshot (saves to /tmp)         | `... screenshot 0`          |
+| `network-errors [tabIndex] [ms]`   | Listen for failed requests via CDP (live, default 8000ms) | `... network-errors 0 5000` |
+| `network-snapshot [tabIndex]`      | Snapshot already-loaded failed/blocked requests via performance API | `... network-snapshot 0` |
+| `diagnose [tabIndex] [ms]`         | **Reload page** and capture all warnings + errors + JS exceptions grouped by severity (default 10000ms) | `... diagnose 0` |
 
 `tabIndex` defaults to `0` (the first/most-recently-active tab that is not the DevTools UI).
 
