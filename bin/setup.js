@@ -15,7 +15,7 @@ import { execSync } from 'node:child_process';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const skillsDir = join(__dirname, '..', 'skills');
 
-const skillNames = ['browser-devtools', 'github-pr', 'jira'];
+const skillNames = ['generate-backend-copilot-instructions', 'browser-devtools', 'github-pr', 'jira'];
 
 for (const name of skillNames) {
     const skillPkgPath = join(skillsDir, name, 'package.json');

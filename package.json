@@ -4,7 +4,9 @@
     "description": "Reusable Claude Code skills: browser-devtools, github-pr, jira",
     "type": "module",
     "bin": {
-        "skills-delivery-setup": "./bin/setup.js"
+        "skills-delivery-setup": "./bin/setup.js",
+        "create-backend-copilot-instructions": "./skills/generate-backend-copilot-instructions/scripts/generate-backend-copilot-instructions.mjs",
+        "create-backend-ai-instructions": "./skills/generate-backend-copilot-instructions/scripts/generate-backend-copilot-instructions.mjs"
     },
     "files": [
         "bin/",

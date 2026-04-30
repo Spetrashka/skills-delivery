@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export const skills = ['browser-devtools', 'github-pr', 'jira'];
+export const skills = ['generate-backend-copilot-instructions', 'browser-devtools', 'github-pr', 'jira'];
 
 export function getSkillPath(name) {
     if (!skills.includes(name)) {
