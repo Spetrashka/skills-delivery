@@ -86,14 +86,21 @@ async function jiraFetch(path, options = {}) {
 
 function textToAdf(text) {
     if (!text) return undefined;
-    return {
-        version: 1,
-        type: 'doc',
-        content: text.split('\n').map(line => ({
-            type: 'paragraph',
-            content: line ? [{ type: 'text', text: line }] : [],
-        })),
-    };
+    const content = [];
+    for (const line of text.split('\n')) {
+        if (line.trim() === '') {
+            if (content.length > 0 && content[content.length - 1].type !== 'paragraph' || content[content.length - 1]?.content?.length > 0) {
+                content.push({ type: 'paragraph', content: [] });
+            }
+        } else {
+            content.push({ type: 'paragraph', content: [{ type: 'text', text: line }] });
+        }
+    }
+    // Remove trailing empty paragraphs
+    while (content.length > 0 && content[content.length - 1].content?.length === 0) {
+        content.pop();
+    }
+    return { version: 1, type: 'doc', content };
 }
 
 function adfToText(adf) {
@@ -159,7 +166,7 @@ const tools = {
         return formatIssue(issue);
     },
 
-    async create_issue({ projectKey, summary, issueType = 'Task', description, assigneeAccountId, priority, labels, parentKey }) {
+    async create_issue({ projectKey, summary, issueType = 'Task', description, assigneeAccountId, priority, labels, parentKey, dueDate }) {
         const fields = {
             project: { key: projectKey },
             summary,
@@ -170,6 +177,7 @@ const tools = {
         if (priority) fields.priority = { name: priority };
         if (labels) fields.labels = labels;
         if (parentKey) fields.parent = { key: parentKey };
+        if (dueDate) fields.duedate = dueDate;
 
         const result = await jiraFetch('/issue', {
             method: 'POST',
