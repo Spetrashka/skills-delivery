@@ -26,6 +26,8 @@ Create a token at [GitHub Settings > Developer settings > Personal access tokens
 
 ## Usage
 
+From this skill directory:
+
 ```bash
 node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'
 ```
@@ -44,6 +46,7 @@ node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'
 | `add_issue_comment`    | Add an issue comment                  | `owner`, `repo`, `issue`, `body`                            |
 | `edit_issue_comment`   | Edit an issue comment                 | `owner`, `repo`, `commentId`, `body`                        |
 | `delete_issue_comment` | Delete an issue comment               | `owner`, `repo`, `commentId`                                |
+| `create_pr`            | Create a pull request                 | `owner`, `repo`, `title`, `head`, `base`, `body`, `draft`   |
 | `create_review`        | Submit a review                       | `owner`, `repo`, `pr`, `event`, `body`                      |
 | `audit_pr_comments`    | Full audit of PR comments and reviews | `owner`, `repo`, `pr`                                       |
 
@@ -52,5 +55,6 @@ node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'
 ```bash
 node ./scripts/github-pr-cli.mjs --tool get_pr --args '{"owner":"org","repo":"repo","pr":42}'
 node ./scripts/github-pr-cli.mjs --tool list_pr_comments --args '{"owner":"org","repo":"repo","pr":42}'
+node ./scripts/github-pr-cli.mjs --tool create_pr --args '{"owner":"org","repo":"repo","title":"Fix login redirect","head":"feature/login-redirect","base":"main","body":"Summary of changes","draft":true}'
 node ./scripts/github-pr-cli.mjs --tool create_review --args '{"owner":"org","repo":"repo","pr":42,"event":"APPROVE","body":"LGTM"}'
 ```

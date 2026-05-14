@@ -13,6 +13,16 @@ No npm dependencies required — uses only Node.js built-ins.
 
 ### Launch browser with remote debugging
 
+From this skill directory, use the bundled launcher:
+
+```bash
+node ./scripts/browser-devtools.mjs launch http://localhost:8080
+```
+
+It uses `$HOME/.chrome-debug-profile` by default so the debug browser keeps cookies and login state across reboots.
+
+Manual commands:
+
 ```bash
 # Chrome
 google-chrome --remote-debugging-port=9222 --user-data-dir=$HOME/.chrome-debug-profile http://localhost:8080 &
@@ -36,10 +46,15 @@ curl -s http://localhost:9222/json/version | head -5
 | ---------- | ----------- | ------------------------- |
 | `CDP_HOST` | `localhost` | Browser host              |
 | `CDP_PORT` | `9222`      | Browser remote debug port |
+| `BROWSER` | auto-detect | Chrome/Chromium executable |
+| `BROWSER_URL` | `http://localhost:8080` | Default URL for `launch` |
+| `BROWSER_PROFILE_DIR` | `$HOME/.chrome-debug-profile` | Debug browser profile |
 
 ---
 
 ## Usage
+
+From this skill directory:
 
 ```bash
 node ./scripts/browser-devtools.mjs <command> [args]
@@ -47,6 +62,7 @@ node ./scripts/browser-devtools.mjs <command> [args]
 
 | Command                            | Description                              |
 | ---------------------------------- | ---------------------------------------- |
+| `launch [url] [profileDir]`        | Start Chrome/Chromium with CDP enabled   |
 | `list`                             | List all open tabs                       |
 | `logs [tabIndex] [durationMs]`     | Capture console logs (default 5 seconds) |
 | `errors [tabIndex]`                | Get JS errors from the page              |
@@ -58,6 +74,7 @@ node ./scripts/browser-devtools.mjs <command> [args]
 ### Examples
 
 ```bash
+node ./scripts/browser-devtools.mjs launch http://localhost:8080
 node ./scripts/browser-devtools.mjs list
 node ./scripts/browser-devtools.mjs logs 0 5000
 node ./scripts/browser-devtools.mjs errors 0

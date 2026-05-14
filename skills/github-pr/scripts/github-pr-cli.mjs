@@ -44,6 +44,7 @@ if (toolIdx === -1) {
     console.error('  add_issue_comment    --args {"owner","repo","issue","body"}');
     console.error('  edit_issue_comment   --args {"owner","repo","commentId","body"}');
     console.error('  delete_issue_comment --args {"owner","repo","commentId"}');
+    console.error('  create_pr            --args {"owner","repo","title","head","base","body","draft"}');
     console.error('  create_review        --args {"owner","repo","pr","event","body"}');
     console.error('  audit_pr_comments    --args {"owner","repo","pr"}');
     process.exit(1);
@@ -237,6 +238,20 @@ const tools = {
     async delete_issue_comment({ owner, repo, commentId }) {
         await ghFetch(`/repos/${owner}/${repo}/issues/comments/${commentId}`, { method: 'DELETE' });
         return `Issue comment ${commentId} deleted.`;
+    },
+
+    async create_pr({ owner, repo, title, head, base, body = '', draft = false }) {
+        const pr = await ghFetch(`/repos/${owner}/${repo}/pulls`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, head, base, body: normalizeMarkdown(body), draft }),
+        });
+        return [
+            `PR #${pr.number} created: ${pr.title}`,
+            `State:  ${pr.state}${pr.draft ? ' [DRAFT]' : ''}`,
+            `Branch: ${pr.head?.ref} → ${pr.base?.ref}`,
+            `URL:    ${pr.html_url}`,
+        ].join('\n');
     },
 
     async create_review({ owner, repo, pr, event, body }) {

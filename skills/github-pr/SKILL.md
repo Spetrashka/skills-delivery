@@ -11,7 +11,11 @@ Reads and manages GitHub PRs, code review comments, and issue comments using the
 
 ## CLI Location
 
-All operations run through: `node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'`
+All operations run from this skill directory through:
+
+```bash
+node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'
+```
 
 ## Required Args for Every Call
 
@@ -39,6 +43,7 @@ Determine `owner` and `repo` from context (e.g. from the workspace remote URL vi
 | Add an issue comment        | `add_issue_comment`    | `owner`, `repo`, `issue`, `body`                                               |
 | Edit an issue comment       | `edit_issue_comment`   | `owner`, `repo`, `commentId`, `body`                                           |
 | Delete an issue comment     | `delete_issue_comment` | `owner`, `repo`, `commentId`                                                   |
+| Create a pull request       | `create_pr`            | `owner`, `repo`, `title`, `head`, `base`, `body`, `draft`                      |
 | Submit a review             | `create_review`        | `owner`, `repo`, `pr`, `event` (`APPROVE`/`REQUEST_CHANGES`/`COMMENT`), `body` |
 | Full PR audit               | `audit_pr_comments`    | `owner`, `repo`, `pr`                                                          |
 
@@ -56,6 +61,9 @@ node ./scripts/github-pr-cli.mjs --tool edit_pr_comment --args '{"owner":"quext"
 
 # Add an issue comment
 node ./scripts/github-pr-cli.mjs --tool add_issue_comment --args '{"owner":"quext","repo":"quext-spa","issue":99,"body":"Looking into this."}'
+
+# Create a PR
+node ./scripts/github-pr-cli.mjs --tool create_pr --args '{"owner":"quext","repo":"quext-spa","title":"Fix login redirect","head":"feature/login-redirect","base":"main","body":"Summary of changes","draft":true}'
 
 # Submit an approving review
 node ./scripts/github-pr-cli.mjs --tool create_review --args '{"owner":"quext","repo":"quext-spa","pr":42,"event":"APPROVE","body":"LGTM"}'

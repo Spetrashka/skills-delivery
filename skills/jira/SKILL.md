@@ -11,7 +11,11 @@ Reads and manages Jira issues, comments, assignments, and transitions using the 
 
 ## CLI Location
 
-All operations run through: `node ./scripts/jira-cli.mjs --tool <tool> --args '<json>'`
+All operations run from this skill directory through:
+
+```bash
+node ./scripts/jira-cli.mjs --tool <tool> --args '<json>'
+```
 
 ## Procedure
 

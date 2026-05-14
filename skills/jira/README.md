@@ -26,6 +26,8 @@ Create an API token at [Atlassian API tokens](https://id.atlassian.com/manage-pr
 
 ## Usage
 
+From this skill directory:
+
 ```bash
 node ./scripts/jira-cli.mjs --tool <tool> --args '<json>'
 ```

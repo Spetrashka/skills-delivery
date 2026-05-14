@@ -1,15 +1,16 @@
 ---
 name: browser-devtools
-description: "Connect to a running Firefox (or Chrome) browser via CDP Remote Debugging Protocol to extract CSS computed styles, console logs, JS errors, and evaluate expressions live on a development page. Use when asked to: inspect element styles, capture console output, get JS errors, evaluate expressions in the browser, debug CSS, check computed styles, read browser logs, get page styles. Triggers: 'browser styles', 'console logs', 'page errors', 'computed styles', 'inspect element', 'browser devtools', 'firefox logs', 'debug page', 'get styles from browser'."
-argument-hint: 'styles <selector> | logs | errors | eval <expression> | list | screenshot'
+description: "Connect to a running Chrome/Chromium browser via CDP Remote Debugging Protocol to extract CSS computed styles, console logs, JS errors, and evaluate expressions live on a development page. Use when asked to: launch a debug browser, inspect element styles, capture console output, get JS errors, evaluate expressions in the browser, debug CSS, check computed styles, read browser logs, get page styles. Triggers: 'launch browser', 'browser styles', 'console logs', 'page errors', 'computed styles', 'inspect element', 'browser devtools', 'debug page', 'get styles from browser'."
+argument-hint: 'launch [url] | styles <selector> | logs | errors | eval <expression> | list | screenshot'
 ---
 
 # Browser DevTools Skill
 
 ## What This Does
 
-Connects to Firefox (or any Chromium browser) via the Chrome DevTools Protocol (CDP) over a local WebSocket to:
+Connects to Chrome or Chromium via the Chrome DevTools Protocol (CDP) over a local WebSocket to:
 
+-   Launch a browser with remote debugging enabled
 -   List open browser tabs
 -   Get computed CSS styles for any CSS selector
 -   Capture console logs and JS errors
@@ -20,7 +21,27 @@ Connects to Firefox (or any Chromium browser) via the Chrome DevTools Protocol (
 
 > **Firefox 129+ dropped CDP support.** Use Chrome or Chromium only.
 
-1. **Start Chrome with remote debugging** (use a persistent debug profile to keep your session):
+1. **Start Chrome with remote debugging** (use a persistent debug profile to keep your session).
+
+    From this skill directory, prefer the bundled launcher:
+
+    ```bash
+    node ./scripts/browser-devtools.mjs launch http://localhost:8080
+    ```
+
+    It finds `google-chrome`, `google-chrome-stable`, `chromium-browser`, `chromium`, or `chrome` and launches it with:
+
+    -   `--remote-debugging-port=9222`
+    -   `--user-data-dir=$HOME/.chrome-debug-profile`
+
+    Override defaults with environment variables:
+
+    -   `BROWSER=/path/to/chrome`
+    -   `BROWSER_URL=http://localhost:3000`
+    -   `BROWSER_PROFILE_DIR=$HOME/.chrome-debug-profile`
+    -   `CDP_PORT=9222`
+
+    Manual Chrome command:
 
     ```bash
     google-chrome --remote-debugging-port=9222 --user-data-dir=$HOME/.chrome-debug-profile http://localhost:8080 &
@@ -41,7 +62,7 @@ Connects to Firefox (or any Chromium browser) via the Chrome DevTools Protocol (
 
 ## CLI Location
 
-All operations run through:
+All operations run from this skill directory through:
 
 ```
 node ./scripts/browser-devtools.mjs <command> [args]
@@ -51,6 +72,7 @@ node ./scripts/browser-devtools.mjs <command> [args]
 
 | Command                            | Description                                  | Example                     |
 | ---------------------------------- | -------------------------------------------- | --------------------------- |
+| `launch [url] [profileDir]`        | Launch Chrome/Chromium with CDP enabled      | `... launch http://localhost:8080` |
 | `list`                             | List all open tabs with their indexes        | `... list`                  |
 | `styles <selector> [tabIndex]`     | Get computed CSS styles for a selector       | `... styles ".my-button" 0` |
 | `styles-raw <selector> [tabIndex]` | Get only non-empty computed styles           | `... styles-raw "h1.title"` |
@@ -72,11 +94,12 @@ node ./scripts/browser-devtools.mjs <command> [args]
 curl -s http://localhost:9222/json/version | head -5
 ```
 
-If this fails, start the browser using the command in Prerequisites above.
+If this fails, start the browser using `node ./scripts/browser-devtools.mjs launch http://localhost:8080`.
 
 ### 2. List open tabs to find the right one
 
 ```bash
+node ./scripts/browser-devtools.mjs launch http://localhost:8080
 node ./scripts/browser-devtools.mjs list
 ```
 
@@ -103,4 +126,4 @@ The script prints JSON to stdout. Analyze the returned styles/logs to identify t
 -   **Empty targets list**: Browser opened without the flag — restart with the flag.
 -   **`WebSocket is not defined`**: Node.js < 22. Either upgrade or `npm install -g ws`.
 -   **No matching elements** for selector: The page may not be loaded yet, or the selector is wrong — try `eval "document.querySelector('...')"` to verify.
--   **Firefox returns no tabs**: Firefox CDP support requires Firefox 86+. Try `--remote-debugging-port` (not `--start-debugger-server`).
+-   **No Chrome/Chromium executable found**: Install Chrome/Chromium or set `BROWSER=/path/to/chrome`.

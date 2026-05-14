@@ -12,6 +12,12 @@ Use this skill to generate GitHub Copilot backend instruction files that match t
 Run the bundled generator:
 
 ```bash
+node ./scripts/generate-backend-copilot-instructions.mjs --target <project>
+```
+
+Run this command from this skill directory. If you are in the repository root of this package instead, use:
+
+```bash
 node ./skills/generate-backend-copilot-instructions/scripts/generate-backend-copilot-instructions.mjs --target <project>
 ```
 

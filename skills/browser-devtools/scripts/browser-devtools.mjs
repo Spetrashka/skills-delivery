@@ -12,16 +12,20 @@
  *   node browser-devtools.mjs errors [tabIndex]
  *   node browser-devtools.mjs eval "<expression>" [tabIndex]
  *   node browser-devtools.mjs screenshot [tabIndex]
+ *   node browser-devtools.mjs launch [url]
  */
 
+import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const CDP_HOST = process.env.CDP_HOST ?? 'localhost';
 const CDP_PORT = parseInt(process.env.CDP_PORT ?? '9222', 10);
 const BASE_URL = `http://${CDP_HOST}:${CDP_PORT}`;
+const DEFAULT_BROWSER_URL = process.env.BROWSER_URL ?? 'http://localhost:8080';
+const DEFAULT_PROFILE_DIR = process.env.BROWSER_PROFILE_DIR ?? join(homedir(), '.chrome-debug-profile');
 
 // ─── WebSocket resolution ─────────────────────────────────────────────────────
 
@@ -496,12 +500,65 @@ async function cmdScreenshot(tabIndex) {
     }
 }
 
+function commandExists(command) {
+    const result = spawnSync(command, ['--version'], {
+        stdio: 'ignore',
+    });
+    return result.status === 0 || result.signal === 'SIGTERM';
+}
+
+function resolveBrowserCommand() {
+    if (process.env.BROWSER) return process.env.BROWSER;
+
+    const candidates = ['google-chrome', 'google-chrome-stable', 'chromium-browser', 'chromium', 'chrome'];
+    return candidates.find(commandExists);
+}
+
+function cmdLaunch(url = DEFAULT_BROWSER_URL, profileDir = DEFAULT_PROFILE_DIR) {
+    const browser = resolveBrowserCommand();
+    if (!browser) {
+        throw new Error('No Chrome/Chromium executable found. Set BROWSER=/path/to/chrome and try again.');
+    }
+
+    const args = [
+        `--remote-debugging-port=${CDP_PORT}`,
+        `--user-data-dir=${profileDir}`,
+        '--no-first-run',
+        '--no-default-browser-check',
+        url,
+    ];
+
+    const child = spawn(browser, args, {
+        detached: true,
+        stdio: 'ignore',
+    });
+    child.unref();
+
+    console.log(
+        JSON.stringify(
+            {
+                browser,
+                pid: child.pid,
+                url,
+                debugUrl: BASE_URL,
+                profileDir,
+            },
+            null,
+            2
+        )
+    );
+}
+
 // ─── CLI entrypoint ───────────────────────────────────────────────────────────
 
 const [, , command, arg1, arg2] = process.argv;
 
 async function main() {
     switch (command) {
+        case 'launch':
+            cmdLaunch(arg1, arg2);
+            break;
+
         case 'list':
             await cmdList();
             break;
@@ -551,6 +608,7 @@ async function main() {
                     'Usage: node browser-devtools.mjs <command> [args]',
                     '',
                     'Commands:',
+                    '  launch [url] [profileDir]          Start Chrome/Chromium with remote debugging',
                     '  list                              List open browser tabs',
                     '  styles "<selector>" [tabIndex]    Get all computed CSS styles',
                     '  styles-raw "<selector>" [idx]     Get non-default computed styles only',
@@ -567,7 +625,7 @@ async function main() {
                     '  CDP_PORT  Browser debug port (default: 9222)',
                     '',
                     'Start Chrome (keeps session with --user-data-dir):',
-                    '  google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile http://localhost:8080 &',
+                    '  node browser-devtools.mjs launch http://localhost:8080',
                     '',
                     'Note: Firefox 129+ dropped CDP support — Chrome/Chromium only.',
                 ].join('\n')

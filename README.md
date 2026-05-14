@@ -49,6 +49,6 @@ Existing files are skipped by default. Use `--dry-run` to preview changes and `-
 | Skill | Description |
 | ----- | ----------- |
 | [generate-backend-copilot-instructions](skills/generate-backend-copilot-instructions/SKILL.md) | Generate repository-specific GitHub Copilot backend instruction files under `.github` |
-| [browser-devtools](skills/browser-devtools/README.md) | Inspect computed CSS styles, capture console logs, get JS errors, evaluate expressions, and take screenshots via CDP |
+| [browser-devtools](skills/browser-devtools/README.md) | Launch a debug Chrome/Chromium browser, inspect computed CSS styles, capture console logs, get JS errors, evaluate expressions, and take screenshots via CDP |
 | [github-pr](skills/github-pr/README.md) | Read and manage GitHub PRs, inline review comments, issue comments, and reviews via the GitHub REST API |
 | [jira](skills/jira/README.md) | Search, create, update, and transition Jira issues. Add comments, assign users, and query with JQL |
