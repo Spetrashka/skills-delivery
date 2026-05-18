@@ -530,7 +530,7 @@ function fallbackIssueAnalysis(issue, reason = 'Model could not return valid str
 
 async function invokeChunkAnalysisModel(model, exportPayload, issues) {
     return model
-        .withStructuredOutput(ChunkAnalysisSchema, { name: 'QinBacklogChunkAnalysis' })
+        .withStructuredOutput(ChunkAnalysisSchema, { name: 'QinBacklogChunkAnalysis', method: 'functionCalling' })
         .invoke(analysisMessages(exportPayload, issues));
 }
 
@@ -930,9 +930,11 @@ async function analyzeIssues(options) {
     const htmlReportPath = resolve(options.html || options['html-report'] || reportPath.replace(/\.md$/i, '.html'));
     const exportPayload = JSON.parse(await readFile(inputPath, 'utf8'));
     const issues = toAnalysisInput(exportPayload, options);
-    const modelName = options.model || Model.LLM3;
+    const modelName = options.model || Model.COPILOT_CLAUDE_SONNET_4_6;
+    console.log(`Using model: ${modelName}`);
     const model = await chatModel(modelName, {
         apiKey: options['api-key'],
+        githubToken: options['github-token'],
         ollamaUrl: options['ollama-url'],
         think: booleanOption(options.think ?? process.env.OLLAMA_THINK, false),
     });
@@ -1337,7 +1339,7 @@ Defaults:
   Analysis: ${DEFAULT_ANALYSIS_PATH}
   Report: ${DEFAULT_REPORT_PATH}
   HTML report: ${DEFAULT_HTML_REPORT_PATH}
-  Model: ${Model.LLM3}
+  Model: ${Model.COPILOT_CLAUDE_SONNET_4_6}
   Chunk size: 5 issues; override with --chunk-size
   Ollama thinking: disabled by default for structured output; pass --think true to enable
   Analysis description limit: 2500 chars per issue; override with --max-description-chars

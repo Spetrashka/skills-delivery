@@ -45,6 +45,7 @@ Model credentials:
 - Google Gemini: `GOOGLE_GEMINI_API_KEY` or `GOOGLE_API_KEY`
 - Ollama: `OLLAMA_BASE_URL` optional, defaults to `http://localhost:11434`
 - Ollama thinking: disabled by default for structured output; set `OLLAMA_THINK=true` or pass `--think true` only when you want model reasoning included
+- Copilot: `GITHUB_TOKEN` or `GITHUB_PACKAGES_TOKEN` (uses `https://api.githubcopilot.com`)
 
 ## Commands
 
@@ -68,6 +69,11 @@ bun ./scripts/task-sorter.ts run --model gpt-oss:20b
 bun ./scripts/task-sorter.ts run --model gpt-5-mini
 bun ./scripts/task-sorter.ts run --model gemini-2.5-pro
 
+# Use Copilot models (requires GITHUB_TOKEN or GITHUB_PACKAGES_TOKEN)
+bun ./scripts/task-sorter.ts run --model copilot:gpt-4.1
+bun ./scripts/task-sorter.ts run --model copilot:claude-sonnet-4.6
+bun ./scripts/task-sorter.ts run --model copilot:o4-mini
+
 # Export only
 bun ./scripts/task-sorter.ts export --out ./out/qin-backlog.json
 
@@ -90,7 +96,7 @@ bun ./scripts/task-sorter.ts run --jql 'project=QIN AND statusCategory != Done O
 | `--input` | latest export path for `analyze` | Export file to analyze |
 | `--report` | `.md` beside analysis JSON | Markdown report path |
 | `--html` / `--html-report` | `.html` beside Markdown report | HTML report path |
-| `--model` | `llama3.2` | Model name from `model.ts`; `chatModel()` chooses the runtime |
+| `--model` | `copilot:claude-sonnet-4.6` | Model name from `model.ts`; `chatModel()` chooses the runtime |
 | `--think` | `false` | Ollama thinking mode; keep disabled for structured output |
 | `--chunk-size` | `5` | Number of issues analyzed per structured model call; failed chunks split smaller |
 | `--page-size` | `100` | Jira page size |

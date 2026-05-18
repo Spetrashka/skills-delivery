@@ -4,6 +4,7 @@ import { ChatOpenAI } from '@langchain/openai';
 
 interface ChatModelOptions {
     apiKey?: string;
+    githubToken?: string;
     ollamaUrl?: string;
     think?: boolean;
 }
@@ -46,6 +47,15 @@ export enum Model {
 
     // Google Models
     GEMINI_PRO = 'gemini-2.5-pro',
+
+    // Copilot Models (via api.githubcopilot.com)
+    COPILOT_GPT4o = 'copilot:gpt-4o',
+    COPILOT_GPT4_1 = 'copilot:gpt-4.1',
+    COPILOT_GPT4_1_MINI = 'copilot:gpt-4.1-mini',
+    COPILOT_O3_MINI = 'copilot:o3-mini',
+    COPILOT_O4_MINI = 'copilot:o4-mini',
+    COPILOT_CLAUDE_SONNET = 'copilot:claude-sonnet-4.5',
+    COPILOT_CLAUDE_SONNET_4_6 = 'copilot:claude-sonnet-4.6',
 }
 
 function openAIModel(
@@ -61,8 +71,34 @@ function openAIModel(
     });
 }
 
+function copilotModel(
+    model: string,
+    githubToken: string | undefined
+): ChatOpenAI {
+    const token =
+        githubToken ||
+        process.env.GITHUB_TOKEN ||
+        process.env.GITHUB_PACKAGES_TOKEN;
+    if (!token) {
+        throw new Error(
+            'Copilot model requires GITHUB_TOKEN or GITHUB_PACKAGES_TOKEN'
+        );
+    }
+    return new ChatOpenAI({
+        model,
+        temperature: 0.7,
+        apiKey: token,
+        configuration: {
+            baseURL: 'https://api.githubcopilot.com',
+            defaultHeaders: {
+                'Copilot-Integration-Id': 'vscode-chat',
+            },
+        },
+    });
+}
+
 export async function chatModel(
-    model: Model | string = Model.LLM3,
+    model: Model | string = Model.COPILOT_CLAUDE_SONNET_4_6,
     options?: ChatModelOptions
 ): Promise<ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI> {
     let chatModelInstance: ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI;
@@ -176,7 +212,26 @@ export async function chatModel(
                     process.env.GOOGLE_API_KEY,
             });
             break;
+        case Model.COPILOT_GPT4o:
+        case Model.COPILOT_GPT4_1:
+        case Model.COPILOT_GPT4_1_MINI:
+        case Model.COPILOT_O3_MINI:
+        case Model.COPILOT_O4_MINI:
+        case Model.COPILOT_CLAUDE_SONNET:
+        case Model.COPILOT_CLAUDE_SONNET_4_6:
+            chatModelInstance = copilotModel(
+                model.replace('copilot:', ''),
+                options?.githubToken
+            );
+            break;
         default:
+            if (model.startsWith('copilot:')) {
+                chatModelInstance = copilotModel(
+                    model.replace('copilot:', ''),
+                    options?.githubToken
+                );
+                break;
+            }
             chatModelInstance = new ChatOllama({
                 model,
                 baseUrl:
