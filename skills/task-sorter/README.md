@@ -26,7 +26,7 @@ Windows (PowerShell): follow https://bun.sh/docs/installation, then run `bun --v
 
 ```bash
 cd skills/task-sorter
-npm install
+bun install
 ```
 
 2. Authenticate:
@@ -54,7 +54,7 @@ bun ./scripts/task-sorter.ts run --model copilot:claude-sonnet-4.6
 cd skills/task-sorter
 curl -fsSL https://bun.sh/install | bash
 source ~/.bashrc 2>/dev/null || true
-npm install
+bun install
 gh auth login
 export GITHUB_TOKEN=$(gh auth token)
 bun ./scripts/task-sorter.ts run --model copilot:claude-sonnet-4.6 --max-issues 50
