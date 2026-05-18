@@ -1,7 +1,7 @@
 {
     "name": "skills-delivery",
     "version": "1.0.0",
-    "description": "Reusable Claude Code skills: browser-devtools, github-pr, jira",
+    "description": "Reusable Claude Code skills: browser-devtools, github-pr, jira, task-sorter",
     "type": "module",
     "bin": {
         "skills-delivery-setup": "./bin/setup.js",
@@ -18,7 +18,9 @@
         "skills",
         "devtools",
         "github",
-        "jira"
+        "jira",
+        "backlog",
+        "task-sorter"
     ],
     "license": "MIT"
 }

@@ -1,0 +1,7 @@
+interface:
+  display_name: "QIN Task Sorter"
+  short_description: "Export and prioritize QIN Jira backlog"
+  default_prompt: "Use $task-sorter to export the QIN Jira backlog, save it to JSON, and produce a sorted analysis file without changing Jira."
+
+policy:
+  allow_implicit_invocation: true

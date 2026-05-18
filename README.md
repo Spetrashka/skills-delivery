@@ -12,6 +12,7 @@ npx skills add Spetrashka/skills-delivery --skill '*'
 npx skills add Spetrashka/skills-delivery --skill jira
 npx skills add Spetrashka/skills-delivery --skill github-pr
 npx skills add Spetrashka/skills-delivery --skill browser-devtools
+npx skills add Spetrashka/skills-delivery --skill task-sorter
 
 # Mix and match
 npx skills add Spetrashka/skills-delivery --skill jira --skill github-pr
@@ -52,3 +53,4 @@ Existing files are skipped by default. Use `--dry-run` to preview changes and `-
 | [browser-devtools](skills/browser-devtools/README.md) | Launch a debug Chrome/Chromium browser, inspect computed CSS styles, capture console logs, get JS errors, evaluate expressions, and take screenshots via CDP |
 | [github-pr](skills/github-pr/README.md) | Read and manage GitHub PRs, inline review comments, issue comments, and reviews via the GitHub REST API |
 | [jira](skills/jira/README.md) | Search, create, update, and transition Jira issues. Add comments, assign users, and query with JQL |
+| [task-sorter](skills/task-sorter/SKILL.md) | Export the QIN Jira backlog to JSON and create a read-only prioritized analysis |
