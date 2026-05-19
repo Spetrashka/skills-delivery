@@ -47,6 +47,8 @@ Model credentials:
 - Ollama thinking: disabled by default for structured output; set `OLLAMA_THINK=true` or pass `--think true` only when you want model reasoning included
 - Copilot: `GITHUB_TOKEN` or `GITHUB_PACKAGES_TOKEN` (uses `https://api.githubcopilot.com`)
 
+For Copilot models, prefer `GITHUB_TOKEN=$(gh auth token)`. The Copilot API does not accept Personal Access Tokens such as `ghp_...` or `github_pat_...`.
+
 ## Commands
 
 | Command | Description |
@@ -103,6 +105,7 @@ bun ./scripts/task-sorter.ts run --jql 'project=QIN AND statusCategory != Done O
 | `--max-issues` | no limit | Stop after N issues for a smaller run |
 | `--max-analyze-issues` | no limit | Analyze only first N exported issues |
 | `--max-description-chars` | `2500` | Truncate descriptions sent to the model; export JSON keeps full descriptions |
+| `--duplicate-review-max-issues` | `250` | Maximum ranked issues sent to the final model duplicate review |
 
 ## Output Contract
 
@@ -120,10 +123,11 @@ The analysis JSON contains:
 
 `rankedIssues` also includes classification fields for human review: `workArea`, `productDomain`, `taskKind`, `systems`, `projectThemes`, and `actionBucket`.
 
-Duplicate handling has two layers:
+Duplicate handling has three layers:
 
 - The model can return duplicate groups while analyzing each chunk.
-- After all chunks are merged, the script runs a deterministic cross-backlog duplicate pass over the analyzed issues. It compares normalized title/description tokens and boosts shared domain, kind, systems, and themes.
+- After all chunks are merged and ranked, the model reviews a compact ranked issue list for cross-chunk duplicate or overlapping work.
+- After model duplicate groups are merged, the script runs a deterministic cross-backlog safety-net pass. It compares normalized title/description tokens and boosts shared domain, kind, systems, and themes.
 
 Final duplicate markings are candidate signals only: `possibleDuplicateOf`, `duplicateConfidence`, and `duplicateReason`. They should be reviewed by a human before any Jira cleanup.
 

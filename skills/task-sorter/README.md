@@ -79,7 +79,7 @@ Get a Jira API token at: https://id.atlassian.com/manage-profile/security/api-to
 Place model credentials in `skills/task-sorter/.env` (or export them as environment variables):
 
 ```env
-# GitHub Copilot (recommended) — OAuth token from `gh auth login`
+# GitHub Copilot (recommended) — OAuth token from `gh auth token`
 GITHUB_TOKEN=gho_...
 
 # OpenAI — direct API key
@@ -109,7 +109,7 @@ export GITHUB_TOKEN=$(gh auth token)
 echo "GITHUB_TOKEN=$(gh auth token)" >> .env
 ```
 
-The Copilot API base URL is `https://api.githubcopilot.com`. The token must be an OAuth token (`gho_`), not a Personal Access Token (`ghp_`).
+The Copilot API base URL is `https://api.githubcopilot.com`. The token must be an OAuth token from `gh auth token` (`gho_`), not a Personal Access Token (`ghp_` or `github_pat_`). If `GITHUB_TOKEN` is unset but `GITHUB_PACKAGES_TOKEN=ghp_...` is present in your shell, Copilot calls will fail.
 
 ## Models
 
@@ -179,17 +179,56 @@ bun ./scripts/task-sorter.ts render --input ./out/qin-backlog.analysis.json --re
 | `--max-issues` | no limit | Stop export after N issues |
 | `--max-analyze-issues` | no limit | Analyze only first N exported issues |
 | `--max-description-chars` | `2500` | Truncate descriptions sent to the model (export JSON keeps full text) |
+| `--duplicate-review-max-issues` | `250` | Maximum ranked issues sent to the final model duplicate review; larger runs keep the deterministic safety-net pass only |
 | `--think` | `false` | Ollama thinking mode; keep disabled for structured output |
 
 ## Processing Flow
 
 1. **Export:** Jira is queried with JQL and the matching issues are saved with summaries, descriptions, status, priority, labels, components, parent, sprint names, and story points.
-2. **Chunk analysis:** issues are sent to the selected chat model in small chunks. The model must return Zod-validated structured output: ranked issues, themes, and possible duplicates inside that chunk.
+2. **Chunk analysis:** issues are sent to the selected chat model in small chunks. The model must return Zod-validated structured output: ranked issues, themes, classification fields, and possible duplicates inside that chunk.
 3. **Fallbacks:** if a chunk fails structured parsing, the script splits it smaller. If a single issue still fails, deterministic scoring is used for that issue and a warning is added.
 4. **Normalization:** model scores are normalized to `0..100`, aligned with importance, sorted, and ranked.
-5. **Classification:** each task is tagged with `workArea`, `productDomain`, `taskKind`, `systems`, `projectThemes`, and `actionBucket`.
-6. **Final duplicate pass:** after all issues are analyzed, the script compares the full analyzed set for cross-chunk possible duplicates. This pass uses normalized title/description tokens plus shared domain, kind, systems, and themes. It marks candidates as `possibleDuplicateOf`; it does not claim they are confirmed duplicates.
-7. **Output:** JSON, Markdown report, and HTML report are written under `out/` or the paths passed with `--out`, `--report`, and `--html`.
+5. **Classification:** the model tags each task with `workArea`, `productDomain`, `taskKind`, `systems`, `projectThemes`, and `actionBucket` using the taxonomy below. The final merge preserves the model's classification instead of replacing it with keyword rules.
+6. **Model duplicate review:** after chunk analysis, the model reviews the compact ranked backlog again to find cross-chunk duplicates or overlapping work. This is capped by `--duplicate-review-max-issues` to avoid oversized model calls.
+7. **Deterministic duplicate safety net:** after model duplicate groups are merged, a conservative token/context pass still catches obvious cross-backlog candidates. This pass is a safety net, not the primary classifier.
+8. **Output:** JSON, Markdown report, and HTML report are written under `out/` or the paths passed with `--out`, `--report`, and `--html`.
+
+## Classification Taxonomy
+
+This is the working split for backlog cleanup. The categories are intentionally broad enough to group all tasks, but specific enough to support ownership and planning.
+
+| Field | Values | How to think about it |
+|---|---|---|
+| `workArea` | `frontend`, `backend`, `fullstack`, `devops`, `qa`, `data`, `product`, `unknown` | Engineering/work ownership. Use `product` for scope/requirements/decision work, not for every product-facing task. |
+| `productDomain` | `integrations`, `resident_management`, `leasing`, `billing`, `notifications`, `reporting`, `identity_access`, `operations`, `platform`, `unknown` | Business or platform domain. Use `platform` for shared architecture/foundations, and `operations` for support, incidents, releases, and runbooks. |
+| `taskKind` | `bug`, `feature`, `tech_debt`, `research`, `qa_planning`, `migration`, `observability`, `documentation`, `support`, `epic`, `unknown` | Type of work requested. This should come from the requested outcome, not just words in the title. |
+| `actionBucket` | `do_now`, `schedule_next`, `groom_first`, `deduplicate`, `defer`, `close_candidate` | Practical backlog handling queue. `groom_first` means the issue needs clarification before scheduling. |
+| `systems` | free-form short names | Concrete systems, integrations, apps, services, or partner names involved. |
+| `projectThemes` | free-form short names | Human-readable themes that group related issues across domains and systems. |
+
+### Design Thinking
+
+The previous approach was useful because it was predictable, but it was too tied to exact words. That is weak for backlog cleanup because Jira issues often use inconsistent language, partial descriptions, old names, or business shorthand. The current direction is:
+
+- Let the model read the issue and decide category/priority/duplicates from context.
+- Keep Zod enums so output stays machine-readable and reports remain stable.
+- Put category definitions in one shared taxonomy file, then feed those definitions to the model prompt.
+- Preserve the model's `unknown` when the model is unsure; the code should not pretend to know better by matching keywords.
+- Keep deterministic logic only for recovery and safety nets: score fallback when structured output fails, and conservative duplicate hints after model duplicate review.
+
+What I changed while working on this:
+
+- Added a shared taxonomy source for category values and definitions.
+- Updated the chunk-analysis prompt so classification is model-owned and based on context, not keyword matching.
+- Added schema descriptions for classification fields to help structured-output models choose the right values.
+- Added a final model-based duplicate review across the ranked backlog so cross-chunk overlap is not dependent only on token overlap.
+- Left the old deterministic duplicate pass as a candidate safety net because it can catch simple obvious overlaps and it does not mutate Jira.
+
+Current limits:
+
+- The final model duplicate review is capped at 250 ranked issues by default. Increase `--duplicate-review-max-issues` for larger model context windows, or lower it for cheaper/faster runs.
+- Very broad epics can still look like duplicates of child tasks. The prompt tells the model not to group items just because they share a system/domain, but human review remains required.
+- The taxonomy may need new `productDomain` values after seeing real grouped output. Add new enum values only when several tasks do not fit the current set.
 
 ## Reading Results
 
@@ -209,7 +248,8 @@ bun ./scripts/task-sorter.ts render --input ./out/qin-backlog.analysis.json --re
 
 Duplicate detection has two layers:
 
-- **Model layer:** the selected model may mark duplicates while analyzing each chunk.
-- **Final deterministic layer:** after all chunks are merged, the script compares all analyzed tasks to catch cross-chunk duplicate candidates.
+- **Chunk model layer:** the selected model may mark duplicates while analyzing each chunk.
+- **Final model review layer:** after chunk results are merged and ranked, the model receives a compact ranked issue list and looks for cross-chunk duplicate or overlapping work.
+- **Final deterministic safety net:** after model groups are merged, the script compares all analyzed tasks to catch obvious cross-backlog duplicate candidates.
 
-The final layer is semantic-ish but deterministic: it compares normalized words from titles and descriptions, then boosts matches that share product domain, task kind, systems, or project themes. It intentionally marks results as possible duplicates because Jira cleanup still needs human confirmation.
+The deterministic safety net is semantic-ish but still token-based: it compares normalized words from titles and descriptions, then boosts matches that share product domain, task kind, systems, or project themes. It intentionally marks results as possible duplicates because Jira cleanup still needs human confirmation.

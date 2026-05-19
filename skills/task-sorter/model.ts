@@ -81,7 +81,12 @@ function copilotModel(
         process.env.GITHUB_PACKAGES_TOKEN;
     if (!token) {
         throw new Error(
-            'Copilot model requires GITHUB_TOKEN or GITHUB_PACKAGES_TOKEN'
+            'Copilot model requires GITHUB_TOKEN from `gh auth token`'
+        );
+    }
+    if (/^(ghp_|github_pat_)/.test(token)) {
+        throw new Error(
+            'Copilot model requires a GitHub OAuth token from `gh auth token`; Personal Access Tokens are not supported by api.githubcopilot.com. Set GITHUB_TOKEN=$(gh auth token) or pass --github-token with that value.'
         );
     }
     return new ChatOpenAI({
