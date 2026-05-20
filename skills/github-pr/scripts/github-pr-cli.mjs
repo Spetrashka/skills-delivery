@@ -36,6 +36,7 @@ if (toolIdx === -1) {
     console.error('  get_pr               --args {"owner","repo","pr"}');
     console.error('  list_pr_comments     --args {"owner","repo","pr"}');
     console.error('  get_pr_comment       --args {"owner","repo","commentId"}');
+    console.error('  reply_pr_comment     --args {"owner","repo","pr","commentId","body"}');
     console.error('  edit_pr_comment      --args {"owner","repo","commentId","body"}');
     console.error('  delete_pr_comment    --args {"owner","repo","commentId"}');
     console.error('  list_pr_reviews      --args {"owner","repo","pr"}');
@@ -118,6 +119,7 @@ function normalizeMarkdown(text) {
 
 function formatComment(c) {
     const lines = [`ID: ${c.id}`, `Author: ${c.user?.login || '?'}`, `Created: ${c.created_at}`, `Updated: ${c.updated_at}`];
+    if (c.in_reply_to_id) lines.push(`In Reply To: ${c.in_reply_to_id}`);
     if (c.path) lines.push(`File: ${c.path}:${c.line || c.original_line || '?'}`);
     if (c.html_url) lines.push(`URL: ${c.html_url}`);
     lines.push(`\n${c.body}`);
@@ -180,6 +182,15 @@ const tools = {
     async get_pr_comment({ owner, repo, commentId }) {
         const c = await ghFetch(`/repos/${owner}/${repo}/pulls/comments/${commentId}`);
         return formatComment(c);
+    },
+
+    async reply_pr_comment({ owner, repo, pr, commentId, body }) {
+        const c = await ghFetch(`/repos/${owner}/${repo}/pulls/${pr}/comments/${commentId}/replies`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body: normalizeMarkdown(body) }),
+        });
+        return `Reply added. ID: ${c.id}\nURL: ${c.html_url}`;
     },
 
     async edit_pr_comment({ owner, repo, commentId, body }) {

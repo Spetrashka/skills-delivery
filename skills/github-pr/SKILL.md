@@ -35,6 +35,7 @@ Determine `owner` and `repo` from context (e.g. from the workspace remote URL vi
 | Get PR details              | `get_pr`               | `owner`, `repo`, `pr`                                                          |
 | List inline review comments | `list_pr_comments`     | `owner`, `repo`, `pr`                                                          |
 | Get a single review comment | `get_pr_comment`       | `owner`, `repo`, `commentId`                                                   |
+| Reply to a review comment   | `reply_pr_comment`     | `owner`, `repo`, `pr`, `commentId`, `body`                                     |
 | Edit a review comment       | `edit_pr_comment`      | `owner`, `repo`, `commentId`, `body`                                           |
 | Delete a review comment     | `delete_pr_comment`    | `owner`, `repo`, `commentId`                                                   |
 | List PR reviews             | `list_pr_reviews`      | `owner`, `repo`, `pr`                                                          |
@@ -58,6 +59,9 @@ node ./scripts/github-pr-cli.mjs --tool list_pr_comments --args '{"owner":"quext
 
 # Edit a review comment
 node ./scripts/github-pr-cli.mjs --tool edit_pr_comment --args '{"owner":"quext","repo":"quext-spa","commentId":123456,"body":"Updated feedback"}'
+
+# Reply to an inline review comment
+node ./scripts/github-pr-cli.mjs --tool reply_pr_comment --args '{"owner":"quext","repo":"quext-spa","pr":42,"commentId":123456,"body":"Thanks, fixed in the latest push."}'
 
 # Add an issue comment
 node ./scripts/github-pr-cli.mjs --tool add_issue_comment --args '{"owner":"quext","repo":"quext-spa","issue":99,"body":"Looking into this."}'

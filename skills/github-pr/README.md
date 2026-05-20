@@ -38,6 +38,7 @@ node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'
 | `get_pr`               | Get PR details                        | `owner`, `repo`, `pr`                                       |
 | `list_pr_comments`     | List inline review comments           | `owner`, `repo`, `pr`                                       |
 | `get_pr_comment`       | Get a single review comment           | `owner`, `repo`, `commentId`                                |
+| `reply_pr_comment`     | Reply to an inline review comment     | `owner`, `repo`, `pr`, `commentId`, `body`                  |
 | `edit_pr_comment`      | Edit a review comment                 | `owner`, `repo`, `commentId`, `body`                        |
 | `delete_pr_comment`    | Delete a review comment               | `owner`, `repo`, `commentId`                                |
 | `list_pr_reviews`      | List PR reviews                       | `owner`, `repo`, `pr`                                       |
@@ -55,6 +56,7 @@ node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'
 ```bash
 node ./scripts/github-pr-cli.mjs --tool get_pr --args '{"owner":"org","repo":"repo","pr":42}'
 node ./scripts/github-pr-cli.mjs --tool list_pr_comments --args '{"owner":"org","repo":"repo","pr":42}'
+node ./scripts/github-pr-cli.mjs --tool reply_pr_comment --args '{"owner":"org","repo":"repo","pr":42,"commentId":123456,"body":"Thanks, fixed in the latest push."}'
 node ./scripts/github-pr-cli.mjs --tool create_pr --args '{"owner":"org","repo":"repo","title":"Fix login redirect","head":"feature/login-redirect","base":"main","body":"Summary of changes","draft":true}'
 node ./scripts/github-pr-cli.mjs --tool create_review --args '{"owner":"org","repo":"repo","pr":42,"event":"APPROVE","body":"LGTM"}'
 ```
