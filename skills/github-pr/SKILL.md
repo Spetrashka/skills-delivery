@@ -1,13 +1,13 @@
 ---
 name: github-pr
-description: 'Interact with GitHub Pull Requests and Issues via CLI. Use when asked to: read PR details, list or edit PR review comments, manage inline code review comments, add or delete issue comments, create reviews, audit PR comment threads, bulk-edit review feedback. Triggers: "PR", "pull request", "review comment", "GitHub comment", "code review".'
+description: 'Interact with GitHub Pull Requests and Issues via CLI. Use when asked to: read or update PR details, change PR draft status, manage reviewers, labels, assignees, inline review comments, issue comments, reviews, or audit PR comment threads. Triggers: "PR", "pull request", "review comment", "GitHub comment", "code review".'
 ---
 
 # GitHub PR Skill
 
 ## What This Does
 
-Reads and manages GitHub PRs, code review comments, and issue comments using the GitHub REST API.
+Reads and manages GitHub PRs, reviewers, labels, assignees, code review comments, and issue comments using the GitHub REST and GraphQL APIs.
 
 ## CLI Location
 
@@ -45,6 +45,12 @@ Determine `owner` and `repo` from context (e.g. from the workspace remote URL vi
 | Edit an issue comment       | `edit_issue_comment`   | `owner`, `repo`, `commentId`, `body`                                           |
 | Delete an issue comment     | `delete_issue_comment` | `owner`, `repo`, `commentId`                                                   |
 | Create a pull request       | `create_pr`            | `owner`, `repo`, `title`, `head`, `base`, `body`, `draft`                      |
+| Update a pull request       | `update_pr`            | `owner`, `repo`, `pr`, `title`, `body`, `base`, `draft`                        |
+| Mark draft PR ready         | `convert_pr_to_ready`  | `owner`, `repo`, `pr`                                                          |
+| Request reviewers           | `request_reviewers`    | `owner`, `repo`, `pr`, `reviewers`, `team_reviewers`                           |
+| Add labels                  | `add_labels`           | `owner`, `repo`, `pr`, `labels`                                                |
+| Remove labels               | `remove_labels`        | `owner`, `repo`, `pr`, `labels`, `all`                                         |
+| Assign users                | `assign`               | `owner`, `repo`, `pr`, `assignees`                                             |
 | Submit a review             | `create_review`        | `owner`, `repo`, `pr`, `event` (`APPROVE`/`REQUEST_CHANGES`/`COMMENT`), `body` |
 | Full PR audit               | `audit_pr_comments`    | `owner`, `repo`, `pr`                                                          |
 
@@ -68,6 +74,22 @@ node ./scripts/github-pr-cli.mjs --tool add_issue_comment --args '{"owner":"quex
 
 # Create a PR
 node ./scripts/github-pr-cli.mjs --tool create_pr --args '{"owner":"quext","repo":"quext-spa","title":"Fix login redirect","head":"feature/login-redirect","base":"main","body":"Summary of changes","draft":true}'
+
+# Update PR metadata
+node ./scripts/github-pr-cli.mjs --tool update_pr --args '{"owner":"quext","repo":"quext-spa","pr":42,"title":"Fix login redirect","base":"develop","draft":false}'
+
+# Mark a draft PR ready for review
+node ./scripts/github-pr-cli.mjs --tool convert_pr_to_ready --args '{"owner":"quext","repo":"quext-spa","pr":42}'
+
+# Request individual and team reviewers
+node ./scripts/github-pr-cli.mjs --tool request_reviewers --args '{"owner":"quext","repo":"quext-spa","pr":42,"reviewers":["octocat"],"team_reviewers":["frontend"]}'
+
+# Add or remove labels
+node ./scripts/github-pr-cli.mjs --tool add_labels --args '{"owner":"quext","repo":"quext-spa","pr":42,"labels":["bug","ready for review"]}'
+node ./scripts/github-pr-cli.mjs --tool remove_labels --args '{"owner":"quext","repo":"quext-spa","pr":42,"labels":["bug"]}'
+
+# Assign users
+node ./scripts/github-pr-cli.mjs --tool assign --args '{"owner":"quext","repo":"quext-spa","pr":42,"assignees":["octocat"]}'
 
 # Submit an approving review
 node ./scripts/github-pr-cli.mjs --tool create_review --args '{"owner":"quext","repo":"quext-spa","pr":42,"event":"APPROVE","body":"LGTM"}'

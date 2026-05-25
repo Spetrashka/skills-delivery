@@ -46,6 +46,12 @@ if (toolIdx === -1) {
     console.error('  edit_issue_comment   --args {"owner","repo","commentId","body"}');
     console.error('  delete_issue_comment --args {"owner","repo","commentId"}');
     console.error('  create_pr            --args {"owner","repo","title","head","base","body","draft"}');
+    console.error('  update_pr            --args {"owner","repo","pr","title","body","base","draft"}');
+    console.error('  convert_pr_to_ready  --args {"owner","repo","pr"}');
+    console.error('  request_reviewers    --args {"owner","repo","pr","reviewers","team_reviewers"}');
+    console.error('  add_labels           --args {"owner","repo","pr","labels"}');
+    console.error('  remove_labels        --args {"owner","repo","pr","labels"}');
+    console.error('  assign               --args {"owner","repo","pr","assignees"}');
     console.error('  create_review        --args {"owner","repo","pr","event","body"}');
     console.error('  audit_pr_comments    --args {"owner","repo","pr"}');
     process.exit(1);
@@ -112,9 +118,66 @@ async function ghFetchAll(path, { maxPages = 20 } = {}) {
     return results;
 }
 
+async function ghGraphql(query, variables = {}) {
+    const data = await ghFetch('/graphql', {
+        method: 'POST',
+        headers: {
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query, variables }),
+    });
+    if (data.errors?.length) {
+        throw new Error(`GitHub GraphQL: ${data.errors.map(error => error.message).join('; ')}`);
+    }
+    return data.data;
+}
+
 function normalizeMarkdown(text) {
     if (!text) return text;
     return text.replace(/\\n/g, '\n').replace(/\n{4,}/g, '\n\n\n');
+}
+
+function arrayArg(value) {
+    if (value == null) return [];
+    return Array.isArray(value) ? value : [value];
+}
+
+function compactPayload(payload) {
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+}
+
+async function setPrDraftStatus({ owner, repo, pr, draft }) {
+    const data = await ghFetch(`/repos/${owner}/${repo}/pulls/${pr}`);
+    if (data.draft === draft) return data;
+
+    if (draft) {
+        await ghGraphql(
+            `mutation ConvertPullRequestToDraft($input: ConvertPullRequestToDraftInput!) {
+                convertPullRequestToDraft(input: $input) {
+                    pullRequest {
+                        number
+                        isDraft
+                    }
+                }
+            }`,
+            { input: { pullRequestId: data.node_id } },
+        );
+    } else {
+        await ghGraphql(
+            `mutation MarkPullRequestReadyForReview($input: MarkPullRequestReadyForReviewInput!) {
+                markPullRequestReadyForReview(input: $input) {
+                    pullRequest {
+                        number
+                        isDraft
+                    }
+                }
+            }`,
+            { input: { pullRequestId: data.node_id } },
+        );
+    }
+
+    return ghFetch(`/repos/${owner}/${repo}/pulls/${pr}`);
 }
 
 function formatComment(c) {
@@ -263,6 +326,85 @@ const tools = {
             `Branch: ${pr.head?.ref} → ${pr.base?.ref}`,
             `URL:    ${pr.html_url}`,
         ].join('\n');
+    },
+
+    async update_pr({ owner, repo, pr, title, body, base, draft }) {
+        const payload = compactPayload({
+            title,
+            body: body === undefined ? undefined : normalizeMarkdown(body),
+            base,
+        });
+        let data;
+        if (Object.keys(payload).length) {
+            data = await ghFetch(`/repos/${owner}/${repo}/pulls/${pr}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+        }
+        if (draft !== undefined) {
+            data = await setPrDraftStatus({ owner, repo, pr, draft });
+        }
+        data ||= await ghFetch(`/repos/${owner}/${repo}/pulls/${pr}`);
+        return [
+            `PR #${data.number} updated: ${data.title}`,
+            `Draft:  ${data.draft ? 'yes' : 'no'}`,
+            `Branch: ${data.head?.ref} → ${data.base?.ref}`,
+            `URL:    ${data.html_url}`,
+        ].join('\n');
+    },
+
+    async convert_pr_to_ready({ owner, repo, pr }) {
+        const data = await setPrDraftStatus({ owner, repo, pr, draft: false });
+        return `PR #${data.number} marked ready for review.\nURL: ${data.html_url}`;
+    },
+
+    async request_reviewers({ owner, repo, pr, reviewers = [], team_reviewers = [] }) {
+        const data = await ghFetch(`/repos/${owner}/${repo}/pulls/${pr}/requested_reviewers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                reviewers: arrayArg(reviewers),
+                team_reviewers: arrayArg(team_reviewers),
+            }),
+        });
+        const users = data.requested_reviewers?.map(reviewer => reviewer.login).join(', ') || '—';
+        const teams = data.requested_teams?.map(team => team.slug).join(', ') || '—';
+        return [`Reviewers requested for PR #${pr}.`, `Users: ${users}`, `Teams: ${teams}`].join('\n');
+    },
+
+    async add_labels({ owner, repo, pr, labels = [] }) {
+        const data = await ghFetch(`/repos/${owner}/${repo}/issues/${pr}/labels`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ labels: arrayArg(labels) }),
+        });
+        const names = data.map(label => label.name).join(', ') || '—';
+        return [`Labels added to PR #${pr}.`, `Current labels: ${names}`].join('\n');
+    },
+
+    async remove_labels({ owner, repo, pr, labels = [], all = false }) {
+        const labelNames = arrayArg(labels);
+        if (all || !labelNames.length) {
+            await ghFetch(`/repos/${owner}/${repo}/issues/${pr}/labels`, { method: 'DELETE' });
+            return `All labels removed from PR #${pr}.`;
+        }
+        await Promise.all(
+            labelNames.map(label =>
+                ghFetch(`/repos/${owner}/${repo}/issues/${pr}/labels/${encodeURIComponent(label)}`, { method: 'DELETE' }),
+            ),
+        );
+        return `Labels removed from PR #${pr}: ${labelNames.join(', ')}`;
+    },
+
+    async assign({ owner, repo, pr, assignees = [] }) {
+        const data = await ghFetch(`/repos/${owner}/${repo}/issues/${pr}/assignees`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assignees: arrayArg(assignees) }),
+        });
+        const names = data.assignees?.map(assignee => assignee.login).join(', ') || '—';
+        return [`Assignees added to PR #${pr}.`, `Current assignees: ${names}`].join('\n');
     },
 
     async create_review({ owner, repo, pr, event, body }) {

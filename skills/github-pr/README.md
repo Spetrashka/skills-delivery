@@ -1,6 +1,6 @@
 # GitHub PR Skill
 
-Read and manage GitHub PRs, inline review comments, issue comments, and reviews via the GitHub REST API.
+Read and manage GitHub PRs, reviewers, labels, assignees, inline review comments, issue comments, and reviews via the GitHub REST and GraphQL APIs.
 
 ## Setup
 
@@ -48,6 +48,12 @@ node ./scripts/github-pr-cli.mjs --tool <tool> --args '<json>'
 | `edit_issue_comment`   | Edit an issue comment                 | `owner`, `repo`, `commentId`, `body`                        |
 | `delete_issue_comment` | Delete an issue comment               | `owner`, `repo`, `commentId`                                |
 | `create_pr`            | Create a pull request                 | `owner`, `repo`, `title`, `head`, `base`, `body`, `draft`   |
+| `update_pr`            | Update PR metadata                    | `owner`, `repo`, `pr`, `title`, `body`, `base`, `draft`     |
+| `convert_pr_to_ready`  | Mark draft PR ready for review        | `owner`, `repo`, `pr`                                       |
+| `request_reviewers`    | Request user or team reviewers        | `owner`, `repo`, `pr`, `reviewers`, `team_reviewers`        |
+| `add_labels`           | Add labels to a PR                    | `owner`, `repo`, `pr`, `labels`                             |
+| `remove_labels`        | Remove labels from a PR               | `owner`, `repo`, `pr`, `labels`, `all`                      |
+| `assign`               | Assign users to a PR                  | `owner`, `repo`, `pr`, `assignees`                          |
 | `create_review`        | Submit a review                       | `owner`, `repo`, `pr`, `event`, `body`                      |
 | `audit_pr_comments`    | Full audit of PR comments and reviews | `owner`, `repo`, `pr`                                       |
 
@@ -58,5 +64,11 @@ node ./scripts/github-pr-cli.mjs --tool get_pr --args '{"owner":"org","repo":"re
 node ./scripts/github-pr-cli.mjs --tool list_pr_comments --args '{"owner":"org","repo":"repo","pr":42}'
 node ./scripts/github-pr-cli.mjs --tool reply_pr_comment --args '{"owner":"org","repo":"repo","pr":42,"commentId":123456,"body":"Thanks, fixed in the latest push."}'
 node ./scripts/github-pr-cli.mjs --tool create_pr --args '{"owner":"org","repo":"repo","title":"Fix login redirect","head":"feature/login-redirect","base":"main","body":"Summary of changes","draft":true}'
+node ./scripts/github-pr-cli.mjs --tool update_pr --args '{"owner":"org","repo":"repo","pr":42,"title":"Fix login redirect","body":"Updated summary","base":"develop","draft":false}'
+node ./scripts/github-pr-cli.mjs --tool convert_pr_to_ready --args '{"owner":"org","repo":"repo","pr":42}'
+node ./scripts/github-pr-cli.mjs --tool request_reviewers --args '{"owner":"org","repo":"repo","pr":42,"reviewers":["octocat"],"team_reviewers":["frontend"]}'
+node ./scripts/github-pr-cli.mjs --tool add_labels --args '{"owner":"org","repo":"repo","pr":42,"labels":["ready for review"]}'
+node ./scripts/github-pr-cli.mjs --tool remove_labels --args '{"owner":"org","repo":"repo","pr":42,"labels":["ready for review"]}'
+node ./scripts/github-pr-cli.mjs --tool assign --args '{"owner":"org","repo":"repo","pr":42,"assignees":["octocat"]}'
 node ./scripts/github-pr-cli.mjs --tool create_review --args '{"owner":"org","repo":"repo","pr":42,"event":"APPROVE","body":"LGTM"}'
 ```
