@@ -272,8 +272,8 @@ export function renderHtmlReport(payload) {
         <span>JQL: ${htmlEscape(source?.jql || '')}</span>
     </div>
     <div class="toolbar">
-        <button onclick="document.querySelectorAll('details.sec').forEach(d=>d.open=true)">Expand all</button>
-        <button onclick="document.querySelectorAll('details.sec').forEach(d=>d.open=false)">Collapse all</button>
+        <button id="expand-all" type="button">Expand all</button>
+        <button id="collapse-all" type="button">Collapse all</button>
     </div>
     <details class="sec" open><summary>Summary</summary><div class="sec-body"><p>${linkIssueKeys(source, analysis.summary?.overallAssessment || 'No summary provided.')}</p><p><strong>Recommended next step:</strong> ${linkIssueKeys(source, analysis.summary?.recommendedNextStep || 'No recommendation provided.')}</p></div></details>
     ${renderReadableOverview(analysis, categories, source)}
@@ -284,6 +284,17 @@ export function renderHtmlReport(payload) {
     ${renderCategory(categories.rest, source)}
     ${warnings}
 </main>
+<script>
+    (() => {
+        const sections = () => Array.from(document.querySelectorAll('details.sec'));
+        document.getElementById('expand-all')?.addEventListener('click', () => {
+            sections().forEach((section) => { section.open = true; });
+        });
+        document.getElementById('collapse-all')?.addEventListener('click', () => {
+            sections().forEach((section) => { section.open = false; });
+        });
+    })();
+</script>
 </body>
 </html>
 `;
