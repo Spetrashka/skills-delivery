@@ -3,6 +3,7 @@ import { normalizeModelScore, alignScoreWithImportance } from './scoring.ts';
 import { mergeDuplicateGroups } from './duplicates.ts';
 import { truncateText, chunkItems, fallbackIssueAnalysis, importanceWeight, mergeChunkResults, analyzeChunkWithSplit } from './chunk-analysis.ts';
 import { reviewBacklogDuplicates } from './duplicate-review.ts';
+import { inferPlanningCategory } from './taxonomy.ts';
 
 export function toAnalysisInput(exportPayload, options) {
     const issues = options['max-analyze-issues'] ? exportPayload.issues.slice(0, Number(options['max-analyze-issues'])) : exportPayload.issues;
@@ -32,11 +33,12 @@ function addGroup(groups, groupName, key, issueKey) {
 }
 
 function buildGroups(rankedIssues) {
-    const groups = { byWorkArea: {}, byProductDomain: {}, byTaskKind: {}, byActionBucket: {}, byProjectTheme: {}, bySystem: {} };
+    const groups = { byWorkArea: {}, byProductDomain: {}, byTaskKind: {}, byPlanningCategory: {}, byActionBucket: {}, byProjectTheme: {}, bySystem: {} };
     for (const issue of rankedIssues) {
         addGroup(groups, 'byWorkArea', issue.workArea, issue.key);
         addGroup(groups, 'byProductDomain', issue.productDomain, issue.key);
         addGroup(groups, 'byTaskKind', issue.taskKind, issue.key);
+        addGroup(groups, 'byPlanningCategory', inferPlanningCategory(issue), issue.key);
         addGroup(groups, 'byActionBucket', issue.actionBucket, issue.key);
         for (const theme of issue.projectThemes || []) addGroup(groups, 'byProjectTheme', theme, issue.key);
         for (const system of issue.systems || []) addGroup(groups, 'bySystem', system, issue.key);
@@ -60,6 +62,7 @@ export function buildRankedIssues(issues, chunkResults) {
         .map((issue) => ({
             ...issue,
             title: issue.title || issueByKey.get(issue.key)?.title || issue.key,
+            planningCategory: inferPlanningCategory(issue),
             score: alignScoreWithImportance(normalizeModelScore(issue.score || 50), issue.importance),
         }))
         .sort((a, b) => {
@@ -110,11 +113,11 @@ export async function analyzeBacklog(model, exportPayload, issues, options) {
     const chunkSize = Math.max(1, Number(options['chunk-size'] || process.env.TASK_SORTER_CHUNK_SIZE || 5));
     const concurrency = Math.max(1, Number(options['concurrency'] || process.env.TASK_SORTER_CONCURRENCY || 5));
     const reporterFilter = options['reporter-filter'] || 'Joshua Barron';
-    const cutoffDate = new Date('2024-10-01T00:00:00.000Z');
+    const cutoffDate = new Date('2025-01-01T00:00:00.000Z');
     const warnings = [];
 
     const categories = categorizeIssues(exportPayload.issues, issues, reporterFilter, cutoffDate);
-    console.error(`Categories: ${categories.josh.length} by reporter ("${reporterFilter}"), ${categories.old.length} old (before Oct 2024), ${categories.rest.length} rest.`);
+    console.error(`Categories: ${categories.josh.length} by reporter ("${reporterFilter}"), ${categories.old.length} old (before Jan 2025), ${categories.rest.length} rest.`);
 
     const categoryKeys = ['josh', 'old', 'rest'] as const;
     const categoryChunks = { josh: chunkItems(categories.josh, chunkSize), old: chunkItems(categories.old, chunkSize), rest: chunkItems(categories.rest, chunkSize) };
@@ -137,7 +140,7 @@ export async function analyzeBacklog(model, exportPayload, issues, options) {
 
     const categoryResults = {
         josh: buildCategoryResult(`Created by ${reporterFilter}`, categories.josh, mergeChunkResults(chunkResultsByCategory.josh)),
-        old: buildCategoryResult('Created before October 2024', categories.old, mergeChunkResults(chunkResultsByCategory.old)),
+        old: buildCategoryResult('Created before January 2025', categories.old, mergeChunkResults(chunkResultsByCategory.old)),
         rest: buildCategoryResult('Other issues', categories.rest, mergeChunkResults(chunkResultsByCategory.rest)),
     };
 
@@ -159,7 +162,7 @@ export async function analyzeBacklog(model, exportPayload, issues, options) {
             totalIssuesReviewed: issues.length,
             highPriorityCount,
             duplicateGroupCount: duplicateGroups.length,
-            overallAssessment: `Reviewed ${issues.length} backlog issues across 3 categories: ${categories.josh.length} by reporter, ${categories.old.length} old (pre-Oct 2024), ${categories.rest.length} rest. ${highPriorityCount} high/critical priority issues.`,
+            overallAssessment: `Reviewed ${issues.length} backlog issues across 3 categories: ${categories.josh.length} by reporter, ${categories.old.length} old (pre-Jan 2025), ${categories.rest.length} rest. ${highPriorityCount} high/critical priority issues.`,
             recommendedNextStep: allRankedIssues[0] ? `Start with ${allRankedIssues[0].key}: ${allRankedIssues[0].suggestedAction}` : 'No issues were available for analysis.',
         },
         duplicateGroups,

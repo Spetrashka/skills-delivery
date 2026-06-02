@@ -188,7 +188,7 @@ bun ./scripts/task-sorter.ts render --input ./out/qin-backlog.analysis.json --re
 2. **Chunk analysis:** issues are sent to the selected chat model in small chunks. The model must return Zod-validated structured output: ranked issues, themes, classification fields, and possible duplicates inside that chunk.
 3. **Fallbacks:** if a chunk fails structured parsing, the script splits it smaller. If a single issue still fails, deterministic scoring is used for that issue and a warning is added.
 4. **Normalization:** model scores are normalized to `0..100`, aligned with importance, sorted, and ranked.
-5. **Classification:** the model tags each task with `workArea`, `productDomain`, `taskKind`, `systems`, `projectThemes`, and `actionBucket` using the taxonomy below. The final merge preserves the model's classification instead of replacing it with keyword rules.
+5. **Classification:** the model tags each task with `workArea`, `productDomain`, `taskKind`, `planningCategory`, `systems`, `projectThemes`, and `actionBucket` using the taxonomy below. The final merge preserves the model's classification instead of replacing it with keyword rules.
 6. **Model duplicate review:** after chunk analysis, the model reviews the compact ranked backlog again to find cross-chunk duplicates or overlapping work. This is capped by `--duplicate-review-max-issues` to avoid oversized model calls.
 7. **Deterministic duplicate safety net:** after model duplicate groups are merged, a conservative token/context pass still catches obvious cross-backlog candidates. This pass is a safety net, not the primary classifier.
 8. **Output:** JSON, Markdown report, and HTML report are written under `out/` or the paths passed with `--out`, `--report`, and `--html`.
@@ -202,6 +202,7 @@ This is the working split for backlog cleanup. The categories are intentionally 
 | `workArea` | `frontend`, `backend`, `fullstack`, `devops`, `qa`, `data`, `product`, `unknown` | Engineering/work ownership. Use `product` for scope/requirements/decision work, not for every product-facing task. |
 | `productDomain` | `integrations`, `resident_management`, `leasing`, `billing`, `notifications`, `reporting`, `identity_access`, `operations`, `platform`, `unknown` | Business or platform domain. Use `platform` for shared architecture/foundations, and `operations` for support, incidents, releases, and runbooks. |
 | `taskKind` | `bug`, `feature`, `tech_debt`, `research`, `qa_planning`, `migration`, `observability`, `documentation`, `support`, `epic`, `unknown` | Type of work requested. This should come from the requested outcome, not just words in the title. |
+| `planningCategory` | `planned_feature`, `improvement`, `bug` | Report-level planning split inside each main backlog category. Planned features are new capabilities; improvements strengthen existing implementations; bugs are broken existing behavior or regressions. |
 | `actionBucket` | `do_now`, `schedule_next`, `groom_first`, `deduplicate`, `defer`, `close_candidate` | Practical backlog handling queue. `groom_first` means the issue needs clarification before scheduling. |
 | `systems` | free-form short names | Concrete systems, integrations, apps, services, or partner names involved. |
 | `projectThemes` | free-form short names | Human-readable themes that group related issues across domains and systems. |
@@ -239,6 +240,7 @@ Current limits:
 - `workArea` separates work such as `frontend`, `backend`, `fullstack`, `devops`, `qa`, `data`, `product`, or `unknown`.
 - `productDomain` groups business area: integrations, resident management, leasing, billing, notifications, reporting, identity/access, operations, platform, or unknown.
 - `taskKind` identifies bug, feature, tech debt, research, QA planning, migration, observability, documentation, support, epic, or unknown.
+- `planningCategory` splits each main category into planned features, improvements to existing implementations, and bugs.
 - `actionBucket` is the practical queue: `do_now`, `schedule_next`, `groom_first`, `deduplicate`, `defer`, or `close_candidate`.
 - `duplicateGroups` are possible duplicate or overlapping work groups for human review. The tool recommends a canonical key, usually the higher-ranked issue, but does not modify Jira.
 - `possibleDuplicateOf`, `duplicateConfidence`, and `duplicateReason` explain why an issue was marked as a duplicate candidate.

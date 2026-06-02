@@ -1,6 +1,6 @@
 import { ChunkAnalysisSchema } from './schemas.ts';
 import { heuristicIssueScore, importanceFromScore } from './scoring.ts';
-import { ACTION_BUCKETS, PRODUCT_DOMAINS, TASK_KINDS, TAXONOMY_GUIDE, WORK_AREAS } from './taxonomy.ts';
+import { ACTION_BUCKETS, PLANNING_CATEGORIES, PRODUCT_DOMAINS, TASK_KINDS, TAXONOMY_GUIDE, WORK_AREAS } from './taxonomy.ts';
 
 export function truncateText(text, maxChars) {
     const value = String(text || '');
@@ -56,6 +56,7 @@ export function fallbackIssueAnalysis(issue, reason = 'Model could not return va
         workArea: 'unknown',
         productDomain: 'unknown',
         taskKind: 'unknown',
+        planningCategory: 'improvement',
         systems: [],
         projectThemes: [],
         actionBucket: heuristic.score >= 85
@@ -79,6 +80,7 @@ export function analysisMessages(exportPayload, issues) {
                 `For every ranked issue, choose one workArea from: ${WORK_AREAS.join(', ')}.`,
                 `For every ranked issue, choose one productDomain from: ${PRODUCT_DOMAINS.join(', ')}.`,
                 `For every ranked issue, choose one taskKind from: ${TASK_KINDS.join(', ')}.`,
+                `For every ranked issue, choose one planningCategory from: ${PLANNING_CATEGORIES.join(', ')}.`,
                 `For every ranked issue, choose one actionBucket from: ${ACTION_BUCKETS.join(', ')}.`,
                 'Populate systems and projectThemes from the issue context using concise product/system names. Leave them empty only when there is no reliable signal.',
                 'Detect duplicates and overlapping tasks conservatively. Use low confidence when evidence is weak.',

@@ -12,6 +12,7 @@ function compactIssue(issue, sourceIssue) {
         workArea: issue.workArea,
         productDomain: issue.productDomain,
         taskKind: issue.taskKind,
+        planningCategory: issue.planningCategory,
         systems: issue.systems || [],
         projectThemes: issue.projectThemes || [],
         suggestedAction: issue.suggestedAction,

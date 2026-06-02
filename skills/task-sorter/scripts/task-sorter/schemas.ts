@@ -1,10 +1,11 @@
 import { z } from 'zod';
-import { ACTION_BUCKETS, PRODUCT_DOMAINS, TASK_KINDS, WORK_AREAS } from './taxonomy.ts';
+import { ACTION_BUCKETS, PLANNING_CATEGORIES, PRODUCT_DOMAINS, TASK_KINDS, WORK_AREAS } from './taxonomy.ts';
 
 export const WorkAreaSchema = z.enum(WORK_AREAS);
 export const ProductDomainSchema = z.enum(PRODUCT_DOMAINS);
 export const TaskKindSchema = z.enum(TASK_KINDS);
 export const ActionBucketSchema = z.enum(ACTION_BUCKETS);
+export const PlanningCategorySchema = z.enum(PLANNING_CATEGORIES);
 
 const RankedIssueItemSchema = z.object({
     rank: z.number(),
@@ -23,6 +24,7 @@ const RankedIssueItemSchema = z.object({
     workArea: WorkAreaSchema.describe('Best engineering/work ownership category for this issue.').default('unknown'),
     productDomain: ProductDomainSchema.describe('Best product or business domain for this issue.').default('unknown'),
     taskKind: TaskKindSchema.describe('Best type of task this issue represents.').default('unknown'),
+    planningCategory: PlanningCategorySchema.describe('Backlog planning split: planned/new feature, improvement to existing implementation, or bug.').default('improvement'),
     systems: z.array(z.string()).describe('Concrete systems, integrations, applications, services, or partner names involved.').default([]),
     projectThemes: z.array(z.string()).describe('Short human-readable themes that group related work across issues.').default([]),
     actionBucket: ActionBucketSchema.describe('Practical queue for backlog cleanup and planning.').default('groom_first'),
@@ -47,6 +49,7 @@ const GroupsSchema = z.object({
     byWorkArea: z.record(z.array(z.string())).default({}),
     byProductDomain: z.record(z.array(z.string())).default({}),
     byTaskKind: z.record(z.array(z.string())).default({}),
+    byPlanningCategory: z.record(z.array(z.string())).default({}),
     byActionBucket: z.record(z.array(z.string())).default({}),
     byProjectTheme: z.record(z.array(z.string())).default({}),
     bySystem: z.record(z.array(z.string())).default({}),

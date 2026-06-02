@@ -2,12 +2,27 @@ export const WORK_AREAS = ['frontend', 'backend', 'fullstack', 'devops', 'qa', '
 export const PRODUCT_DOMAINS = ['integrations', 'resident_management', 'leasing', 'billing', 'notifications', 'reporting', 'identity_access', 'operations', 'platform', 'unknown'] as const;
 export const TASK_KINDS = ['bug', 'feature', 'tech_debt', 'research', 'qa_planning', 'migration', 'observability', 'documentation', 'support', 'epic', 'unknown'] as const;
 export const ACTION_BUCKETS = ['do_now', 'schedule_next', 'groom_first', 'deduplicate', 'defer', 'close_candidate'] as const;
+export const PLANNING_CATEGORIES = ['planned_feature', 'improvement', 'bug'] as const;
+
+export const PLANNING_CATEGORY_LABELS = {
+    planned_feature: 'Planned Features',
+    improvement: 'Improvements',
+    bug: 'Bugs',
+} as const;
+
+export function inferPlanningCategory(issue) {
+    if (PLANNING_CATEGORIES.includes(issue?.planningCategory)) return issue.planningCategory;
+    if (issue?.taskKind === 'bug') return 'bug';
+    if (issue?.taskKind === 'feature' || issue?.taskKind === 'epic') return 'planned_feature';
+    return 'improvement';
+}
 
 export const TAXONOMY_GUIDE = [
     'Classification taxonomy:',
     '- workArea: frontend = UI/client work; backend = APIs/services/persistence; fullstack = meaningful frontend and backend work; devops = deployment, release, infrastructure, monitoring operations; qa = test planning/manual validation/test data; data = mapping, migration, ETL, reporting data quality; product = scope, requirements, decision, prioritization; unknown = insufficient evidence.',
     '- productDomain: integrations = external partner systems and sync flows; resident_management = residents, guests, people, communities; leasing = leases, applications, renewals, prospects; billing = payments, invoices, ledger, charges; notifications = email/SMS/messages/templates; reporting = dashboards, metrics, analytics exports; identity_access = auth, roles, permissions; operations = support, incidents, runbooks, release process; platform = shared architecture, migration platform, design/system foundations; unknown = no reliable business domain.',
     '- taskKind: bug = broken existing behavior; feature = new user/system capability; tech_debt = refactor, cleanup, maintainability, performance without direct new behavior; research = investigation, spike, proposal, decision discovery; qa_planning = QA scenarios, test cases, test data; migration = moving systems/data/version/platforms; observability = metrics, logs, alerts, dashboards, incident visibility; documentation = docs/runbooks/release notes; support = production support or operational handling; epic = broad Jira epic/initiative; unknown = not enough evidence.',
+    '- planningCategory: planned_feature = a planned/new feature or capability, including larger epics for new product/system behavior; improvement = improving, hardening, refactoring, migrating, documenting, observing, testing, or otherwise strengthening existing implementation; bug = broken existing behavior, production defect, regression, or correctness issue.',
     '- actionBucket: do_now = urgent/high-impact item needing immediate attention; schedule_next = important but can be planned into the next cycle; groom_first = needs clarification, sizing, ownership, acceptance criteria, or product decision before scheduling; deduplicate = likely duplicate/overlap with another issue; defer = low value, stale, or not timely; close_candidate = likely obsolete, already solved, or invalid.',
     'Prefer the most specific supported category. Use unknown only when the issue text and Jira metadata truly do not justify a category.',
 ].join('\n');

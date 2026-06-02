@@ -121,7 +121,7 @@ The analysis JSON contains:
 - `themes`: larger product/engineering themes found in the backlog
 - `summary`: concise interpretation and recommended handling
 
-`rankedIssues` also includes classification fields for human review: `workArea`, `productDomain`, `taskKind`, `systems`, `projectThemes`, and `actionBucket`.
+`rankedIssues` also includes classification fields for human review: `workArea`, `productDomain`, `taskKind`, `planningCategory`, `systems`, `projectThemes`, and `actionBucket`.
 
 Duplicate handling has three layers:
 
