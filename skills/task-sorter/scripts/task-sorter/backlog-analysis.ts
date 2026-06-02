@@ -80,44 +80,91 @@ export function buildRankedIssues(issues, chunkResults) {
     return rankedIssues;
 }
 
-export function buildFinalAnalysis(issues, chunkResults, extraDuplicateGroups = []) {
+function buildCategoryResult(label, issues, chunkResults) {
     const rankedIssues = buildRankedIssues(issues, chunkResults);
+    return { label, rankedIssues, themes: chunkResults.themes || [], groups: buildGroups(rankedIssues) };
+}
 
-    const modelDuplicateGroups = [...(chunkResults.duplicateGroups || []), ...(extraDuplicateGroups || [])]
-        .filter((g) => Array.isArray(g.issueKeys) && g.issueKeys.length > 1)
-        .map((g, i) => ({ ...g, groupId: g.groupId || `duplicate-${i + 1}` }));
-    const duplicateGroups = mergeDuplicateGroups(rankedIssues, issues, modelDuplicateGroups);
-    const highPriorityCount = rankedIssues.filter((i) => i.importance === 'critical' || i.importance === 'high').length;
+function categorizeIssues(exportIssues, analysisIssues, reporterFilter, cutoffDate) {
+    const reporterPattern = new RegExp(reporterFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const joshKeys = new Set((exportIssues || []).filter((i) => reporterPattern.test(i.reporter || '')).map((i) => i.key));
+    const oldKeys = new Set((exportIssues || []).filter((i) => !joshKeys.has(i.key) && i.created && new Date(i.created) < cutoffDate).map((i) => i.key));
+    return {
+        josh: analysisIssues.filter((i) => joshKeys.has(i.key)),
+        old: analysisIssues.filter((i) => oldKeys.has(i.key)),
+        rest: analysisIssues.filter((i) => !joshKeys.has(i.key) && !oldKeys.has(i.key)),
+    };
+}
 
-    return AnalysisSchema.parse({
-        summary: {
-            totalIssuesReviewed: issues.length,
-            highPriorityCount,
-            duplicateGroupCount: duplicateGroups.length,
-            overallAssessment: `Reviewed ${issues.length} backlog issues in structured chunks. ${highPriorityCount} issues were classified as high or critical priority.`,
-            recommendedNextStep: rankedIssues[0]
-                ? `Start with ${rankedIssues[0].key}: ${rankedIssues[0].suggestedAction}`
-                : 'No issues were available for analysis.',
-        },
-        rankedIssues,
-        duplicateGroups,
-        themes: chunkResults.themes || [],
-        groups: buildGroups(rankedIssues),
-    });
+async function runWithConcurrency(tasks, concurrency) {
+    const results = new Array(tasks.length);
+    let next = 0;
+    async function worker() {
+        while (next < tasks.length) { const i = next++; results[i] = await tasks[i](); }
+    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, worker));
+    return results;
 }
 
 export async function analyzeBacklog(model, exportPayload, issues, options) {
     const chunkSize = Math.max(1, Number(options['chunk-size'] || process.env.TASK_SORTER_CHUNK_SIZE || 5));
+    const concurrency = Math.max(1, Number(options['concurrency'] || process.env.TASK_SORTER_CONCURRENCY || 5));
+    const reporterFilter = options['reporter-filter'] || 'Joshua Barron';
+    const cutoffDate = new Date('2024-10-01T00:00:00.000Z');
     const warnings = [];
-    const chunks = chunkItems(issues, chunkSize);
-    const results = [];
-    for (const [index, chunk] of chunks.entries()) {
-        console.error(`Analyzing chunk ${index + 1}/${chunks.length} (${chunk.length} issues)...`);
-        results.push(await analyzeChunkWithSplit(model, exportPayload, chunk, warnings));
-    }
-    const mergedResults = mergeChunkResults(results);
-    const rankedIssues = buildRankedIssues(issues, mergedResults);
-    console.error(`Reviewing duplicate candidates across ${rankedIssues.length} ranked issues with the model...`);
-    const crossBacklogDuplicateGroups = await reviewBacklogDuplicates(model, exportPayload, issues, rankedIssues, warnings, options);
-    return { analysis: buildFinalAnalysis(issues, mergedResults, crossBacklogDuplicateGroups), warnings, chunkSize };
+
+    const categories = categorizeIssues(exportPayload.issues, issues, reporterFilter, cutoffDate);
+    console.error(`Categories: ${categories.josh.length} by reporter ("${reporterFilter}"), ${categories.old.length} old (before Oct 2024), ${categories.rest.length} rest.`);
+
+    const categoryKeys = ['josh', 'old', 'rest'] as const;
+    const categoryChunks = { josh: chunkItems(categories.josh, chunkSize), old: chunkItems(categories.old, chunkSize), rest: chunkItems(categories.rest, chunkSize) };
+    const totalChunks = categoryChunks.josh.length + categoryChunks.old.length + categoryChunks.rest.length;
+    console.error(`Processing ${totalChunks} chunks across 3 categories (size ${chunkSize}, concurrency ${concurrency})...`);
+
+    let done = 0;
+    const allTasks = categoryKeys.flatMap((catKey) =>
+        categoryChunks[catKey].map((chunk, i) => async () => {
+            const result = await analyzeChunkWithSplit(model, exportPayload, chunk, warnings);
+            done++;
+            console.error(`[${catKey}] ${i + 1}/${categoryChunks[catKey].length} done (${done}/${totalChunks} total)`);
+            return { catKey, result };
+        }),
+    );
+    const allTaskResults = await runWithConcurrency(allTasks, concurrency);
+
+    const chunkResultsByCategory: Record<string, any[]> = { josh: [], old: [], rest: [] };
+    for (const { catKey, result } of allTaskResults) chunkResultsByCategory[catKey].push(result);
+
+    const categoryResults = {
+        josh: buildCategoryResult(`Created by ${reporterFilter}`, categories.josh, mergeChunkResults(chunkResultsByCategory.josh)),
+        old: buildCategoryResult('Created before October 2024', categories.old, mergeChunkResults(chunkResultsByCategory.old)),
+        rest: buildCategoryResult('Other issues', categories.rest, mergeChunkResults(chunkResultsByCategory.rest)),
+    };
+
+    const allRankedIssues = [...categoryResults.josh.rankedIssues, ...categoryResults.old.rankedIssues, ...categoryResults.rest.rankedIssues];
+    console.error(`Reviewing duplicate candidates across ${allRankedIssues.length} ranked issues...`);
+    const crossBacklogDuplicateGroups = await reviewBacklogDuplicates(model, exportPayload, issues, allRankedIssues, warnings, options);
+
+    const allModelDuplicateGroups = [
+        ...chunkResultsByCategory.josh.flatMap((r) => r.duplicateGroups || []),
+        ...chunkResultsByCategory.old.flatMap((r) => r.duplicateGroups || []),
+        ...chunkResultsByCategory.rest.flatMap((r) => r.duplicateGroups || []),
+        ...(crossBacklogDuplicateGroups || []),
+    ].filter((g) => Array.isArray(g.issueKeys) && g.issueKeys.length > 1).map((g, i) => ({ ...g, groupId: g.groupId || `duplicate-${i + 1}` }));
+    const duplicateGroups = mergeDuplicateGroups(allRankedIssues, issues, allModelDuplicateGroups);
+    const highPriorityCount = allRankedIssues.filter((i) => i.importance === 'critical' || i.importance === 'high').length;
+
+    const analysis = AnalysisSchema.parse({
+        summary: {
+            totalIssuesReviewed: issues.length,
+            highPriorityCount,
+            duplicateGroupCount: duplicateGroups.length,
+            overallAssessment: `Reviewed ${issues.length} backlog issues across 3 categories: ${categories.josh.length} by reporter, ${categories.old.length} old (pre-Oct 2024), ${categories.rest.length} rest. ${highPriorityCount} high/critical priority issues.`,
+            recommendedNextStep: allRankedIssues[0] ? `Start with ${allRankedIssues[0].key}: ${allRankedIssues[0].suggestedAction}` : 'No issues were available for analysis.',
+        },
+        duplicateGroups,
+        categories: categoryResults,
+    });
+
+    return { analysis, warnings, chunkSize };
 }

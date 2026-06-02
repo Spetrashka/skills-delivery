@@ -35,8 +35,10 @@ Defaults:
   HTML report: ${DEFAULT_HTML_REPORT_PATH}
   Model: ${Model.COPILOT_CLAUDE_SONNET_4_6}
   Chunk size: 5 issues; override with --chunk-size
+  Concurrency: 5 parallel chunks; override with --concurrency
   Duplicate review limit: 250 ranked issues; override with --duplicate-review-max-issues
   Ollama thinking: disabled by default for structured output; pass --think true to enable
   Analysis description limit: 2500 chars per issue; override with --max-description-chars
+  Reporter filter: 'josh' by default; override with --reporter-filter <name>
 `);
 }

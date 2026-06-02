@@ -28,8 +28,62 @@ function appendGroupSection(lines, title, groups, source) {
     lines.push('');
 }
 
+function appendRankedIssuesSection(lines, rankedIssues, source) {
+    if (!rankedIssues?.length) { lines.push('No issues in this category.', ''); return; }
+    lines.push('| Rank | Issue | Importance | Score | Area | Domain | Kind | Action | Duplicate | Title |');
+    lines.push('| ---: | --- | --- | ---: | --- | --- | --- | --- | --- | --- |');
+    for (const issue of rankedIssues) {
+        const dup = issue.duplicateOf ? `dup:${issue.duplicateOf}` : issue.possibleDuplicateOf ? `possible:${issue.possibleDuplicateOf}` : '';
+        lines.push(`| ${issue.rank} | ${issueLink(source, issue.key)} | ${issue.importance} | ${issue.score} | ${markdownEscape(issue.workArea)} | ${markdownEscape(issue.productDomain)} | ${markdownEscape(issue.taskKind)} | ${markdownEscape(issue.actionBucket)} | ${dup} | ${markdownEscape(issue.title)} |`);
+    }
+    lines.push('');
+}
+
+function appendThemesSection(lines, themes) {
+    if (!themes?.length) { lines.push('No themes returned by the model.', ''); return; }
+    lines.push('| Theme | Importance | Issues | Notes |');
+    lines.push('| --- | --- | --- | --- |');
+    for (const t of themes) lines.push(`| ${markdownEscape(t.name)} | ${t.importance} | ${(t.issueKeys || []).join(', ')} | ${markdownEscape(t.notes)} |`);
+    lines.push('');
+}
+
+function appendReasoningSection(lines, rankedIssues, source) {
+    if (!rankedIssues?.length) { lines.push('No reasoning available.', ''); return; }
+    for (const issue of rankedIssues) {
+        lines.push(`#### ${issue.rank}. ${issue.key} — ${markdownEscape(issue.title)}`, '');
+        lines.push(`- Importance: ${issue.importance}; confidence: ${issue.confidence}; score: ${issue.score}`);
+        lines.push(`- Area: ${markdownEscape(issue.workArea)}; domain: ${markdownEscape(issue.productDomain)}; kind: ${markdownEscape(issue.taskKind)}; action: ${markdownEscape(issue.actionBucket)}`);
+        if (issue.systems?.length) lines.push(`- Systems: ${issue.systems.map(markdownEscape).join(', ')}`);
+        if (issue.projectThemes?.length) lines.push(`- Project themes: ${issue.projectThemes.map(markdownEscape).join(', ')}`);
+        if (issue.possibleDuplicateOf) lines.push(`- Possible duplicate of: ${issueLink(source, issue.possibleDuplicateOf)} (${issue.duplicateConfidence || 'low'}). ${markdownEscape(issue.duplicateReason || '')}`);
+        lines.push('');
+        lines.push(markdownEscape(issue.reasoning || 'No reasoning provided.'), '');
+    }
+}
+
+function appendCategorySection(lines, category, source) {
+    if (!category) return;
+    const count = (category.rankedIssues || []).length;
+    lines.push(`## ${category.label} (${count})`, '');
+    lines.push('### Ranked Issues', '');
+    appendRankedIssuesSection(lines, category.rankedIssues, source);
+    lines.push('### Groups', '');
+    appendGroupSection(lines, 'By Work Area', category.groups?.byWorkArea, source);
+    appendGroupSection(lines, 'By Product Domain', category.groups?.byProductDomain, source);
+    appendGroupSection(lines, 'By Task Kind', category.groups?.byTaskKind, source);
+    appendGroupSection(lines, 'By Action Bucket', category.groups?.byActionBucket, source);
+    appendGroupSection(lines, 'By Project Theme', category.groups?.byProjectTheme, source);
+    appendGroupSection(lines, 'By System', category.groups?.bySystem, source);
+    lines.push('### Themes', '');
+    appendThemesSection(lines, category.themes);
+    lines.push('### Detailed Reasoning', '');
+    appendReasoningSection(lines, category.rankedIssues, source);
+}
+
 export function renderMarkdownReport(payload) {
     const { source, analysis } = payload;
+    const categories = analysis.categories || {};
+
     const lines = [
         '# QIN Backlog Analysis', '',
         `- Analyzed at: ${payload.analyzedAt}`,
@@ -44,56 +98,24 @@ export function renderMarkdownReport(payload) {
     ];
 
     appendDuplicateCandidateSection(lines, analysis.duplicateGroups, source);
-    lines.push('', '## Ranked Issues', '',
-        '| Rank | Issue | Importance | Score | Area | Domain | Kind | Action | Duplicate | Title |',
-        '| ---: | --- | --- | ---: | --- | --- | --- | --- | --- | --- |');
-
-    for (const issue of analysis.rankedIssues || []) {
-        const dup = issue.duplicateOf
-            ? `duplicate of ${issue.duplicateOf}`
-            : issue.possibleDuplicateOf ? `possible of ${issue.possibleDuplicateOf} (${issue.duplicateConfidence || 'low'})` : '';
-        lines.push([issue.rank, issueLink(source, issue.key), issue.importance, issue.score, issue.workArea, issue.productDomain, issue.taskKind, issue.actionBucket, markdownEscape(dup), markdownEscape(issue.title)].join(' | '));
-    }
-
-    lines.push('', '## Groups', '');
-    appendGroupSection(lines, 'By Work Area', analysis.groups?.byWorkArea, source);
-    appendGroupSection(lines, 'By Product Domain', analysis.groups?.byProductDomain, source);
-    appendGroupSection(lines, 'By Task Kind', analysis.groups?.byTaskKind, source);
-    appendGroupSection(lines, 'By Action Bucket', analysis.groups?.byActionBucket, source);
-    appendGroupSection(lines, 'By Project Theme', analysis.groups?.byProjectTheme, source);
-    appendGroupSection(lines, 'By System', analysis.groups?.bySystem, source);
 
     lines.push('', '## Duplicates Detail', '');
-    if (analysis.duplicateGroups?.length) {
-        for (const group of analysis.duplicateGroups) {
-            lines.push(`- ${group.groupId}: ${group.issueKeys.map((k) => issueLink(source, k)).join(', ')} (${group.confidence}); canonical: ${issueLink(source, group.recommendedCanonicalKey)}`);
-            lines.push(`  ${group.reason}`);
-        }
-    } else { lines.push('No duplicate groups detected.'); }
+    for (const g of analysis.duplicateGroups || []) {
+        lines.push(`### ${markdownEscape(g.groupId)} (${g.confidence})`, '');
+        lines.push(`Issues: ${(g.issueKeys || []).map((k) => issueLink(source, k)).join(', ')}`);
+        lines.push(`Canonical: ${issueLink(source, g.recommendedCanonicalKey)}`);
+        lines.push(`Reason: ${markdownEscape(g.reason)}`, '');
+    }
+
+    appendCategorySection(lines, categories.josh, source);
+    appendCategorySection(lines, categories.old, source);
+    appendCategorySection(lines, categories.rest, source);
 
     if (payload.warnings?.length) {
-        lines.push('', '## Warnings', '');
+        lines.push('## Warnings', '');
         for (const w of payload.warnings) lines.push(`- ${markdownEscape(w)}`);
+        lines.push('');
     }
 
-    lines.push('', '## Themes', '');
-    if (analysis.themes?.length) {
-        lines.push('| Theme | Importance | Issues | Notes |', '| --- | --- | --- | --- |');
-        for (const theme of analysis.themes) {
-            lines.push([markdownEscape(theme.name), theme.importance, (theme.issueKeys || []).map((k) => issueLink(source, k)).join(', '), markdownEscape(theme.notes)].join(' | '));
-        }
-    } else { lines.push('No themes returned by the model.'); }
-
-    lines.push('', '## Detailed Reasoning', '');
-    for (const issue of analysis.rankedIssues || []) {
-        lines.push(`### ${issue.rank}. ${issue.key} - ${issue.title}`, '');
-        lines.push(`Importance: ${issue.importance}; confidence: ${issue.confidence}; score: ${issue.score}`);
-        lines.push(`Area: ${issue.workArea}; domain: ${issue.productDomain}; kind: ${issue.taskKind}; action: ${issue.actionBucket}`);
-        if (issue.systems?.length) lines.push(`Systems: ${issue.systems.join(', ')}`);
-        if (issue.projectThemes?.length) lines.push(`Project themes: ${issue.projectThemes.join(', ')}`);
-        if (issue.possibleDuplicateOf) lines.push(`Possible duplicate of: ${issue.possibleDuplicateOf} (${issue.duplicateConfidence || 'low'}). ${issue.duplicateReason || ''}`);
-        lines.push('', issue.reasoning || 'No reasoning provided.', '');
-    }
-
-    return `${lines.join('\n')}\n`;
+    return lines.join('\n');
 }
