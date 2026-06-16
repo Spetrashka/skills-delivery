@@ -2,6 +2,11 @@ import { DEFAULT_JQL, DEFAULT_EXPORT_PATH, FIELDS } from './constants.ts';
 import { writeJson } from './io.ts';
 import { resolve } from 'node:path';
 
+function extractProjectKey(jql) {
+    const m = String(jql || '').match(/\bproject\s*=\s*"?([A-Z][A-Z0-9_-]*)"?/i);
+    return m ? m[1].toUpperCase() : undefined;
+}
+
 function requireJiraConfig() {
     const baseUrl = process.env.JIRA_BASE_URL?.replace(/\/$/, '');
     const email = process.env.JIRA_EMAIL;
@@ -66,7 +71,8 @@ function normalizeIssue(issue, baseUrl) {
 
 export async function exportIssues(options) {
     const { baseUrl } = requireJiraConfig();
-    const jql = options.jql || DEFAULT_JQL;
+    const project = (options.project || process.env.TASK_SORTER_PROJECT || '').toUpperCase() || undefined;
+    const jql = options.jql || (project ? `project=${project} AND statusCategory != Done ORDER BY Rank ASC` : DEFAULT_JQL);
     const pageSize = Number(options['page-size'] || 100);
     const maxIssues = options['max-issues'] ? Number(options['max-issues']) : Infinity;
     const outPath = resolve(options.out || DEFAULT_EXPORT_PATH);
@@ -88,7 +94,7 @@ export async function exportIssues(options) {
     }
 
     const payload = {
-        source: { jiraBaseUrl: baseUrl, jql, exportedAt: new Date().toISOString(), readOnly: true },
+        source: { jiraBaseUrl: baseUrl, jql, projectKey: project || extractProjectKey(jql), exportedAt: new Date().toISOString(), readOnly: true },
         count: issues.length,
         issues,
     };

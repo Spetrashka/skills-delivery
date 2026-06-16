@@ -1,5 +1,11 @@
 import { inferPlanningCategory, PLANNING_CATEGORIES, PLANNING_CATEGORY_LABELS } from './taxonomy.ts';
 
+function projectLabel(source) {
+    if (source?.projectKey) return source.projectKey;
+    const m = String(source?.jql || '').match(/\bproject\s*=\s*"?([A-Z][A-Z0-9_-]*)"?/i);
+    return m ? m[1].toUpperCase() : 'Backlog';
+}
+
 function markdownEscape(value) {
     return String(value ?? '').replace(/\|/g, '\\|').replace(/\n+/g, ' ').trim();
 }
@@ -244,7 +250,7 @@ function appendCategorySection(lines, category, source) {
 export function renderIdeasReport(payload) {
     const { source, ideas, synthesizedAt, model, totalIssues } = payload;
     const lines = [
-        '# QIN Backlog Ideas', '',
+        `# ${projectLabel(source)} Ideas`, '',
         `- Synthesized at: ${synthesizedAt}`,
         `- Model: ${model}`,
         `- Total issues: ${totalIssues}`,
@@ -260,7 +266,7 @@ export function renderMarkdownReport(payload) {
     const categories = analysis.categories || {};
 
     const lines = [
-        '# QIN Backlog Analysis', '',
+        `# ${projectLabel(source)} Analysis`, '',
         `- Analyzed at: ${payload.analyzedAt}`,
         `- Model: ${payload.model}`,
         `- Reviewed issues: ${payload.reviewedIssueCount}`,

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { config } from 'dotenv';
 import { chatModel, DEFAULT_MODEL } from '../model.ts';
-import { SKILL_DIR, DEFAULT_EXPORT_PATH, DEFAULT_ANALYSIS_PATH, DEFAULT_IDEAS_PATH } from './task-sorter/constants.ts';
+import { SKILL_DIR, DEFAULT_PROJECT, defaultPaths } from './task-sorter/constants.ts';
 import { parseArgs, booleanOption, printHelp } from './task-sorter/args.ts';
 import { exportIssues } from './task-sorter/jira.ts';
 import { toAnalysisInput, analyzeBacklog } from './task-sorter/backlog-analysis.ts';
@@ -16,26 +16,37 @@ import { synthesizeIdeas } from './task-sorter/idea-synthesis.ts';
 config({ path: resolve(process.env.HOME, '.config/jira-mcp/.env') });
 config({ path: resolve(SKILL_DIR, '.env'), override: true });
 
-async function analyzeIssues(options) {
-    const inputPath = resolve(options.input || DEFAULT_EXPORT_PATH);
-    const outPath = resolve(options.out || DEFAULT_ANALYSIS_PATH);
-    const reportPath = resolve(options.report || outPath.replace(/\.json$/i, '.md'));
-    const htmlReportPath = resolve(options.html || options['html-report'] || reportPath.replace(/\.md$/i, '.html'));
-    const exportPayload = JSON.parse(await readFile(inputPath, 'utf8'));
-    const issues = toAnalysisInput(exportPayload, options);
+const args = parseArgs(process.argv.slice(2));
+const command = args._[0] || 'run';
+
+// Project key drives default JQL and output file names.
+const project = ((args.project || process.env.TASK_SORTER_PROJECT || DEFAULT_PROJECT) as string).toUpperCase();
+const paths = defaultPaths(project);
+
+function makeModel(options) {
     const modelName = options.model || DEFAULT_MODEL;
     console.log(`Using model: ${modelName}`);
-    const model = await chatModel(modelName, {
+    return chatModel(modelName, {
         apiKey: options['api-key'],
         githubToken: options['github-token'],
         ollamaUrl: options['ollama-url'],
         think: booleanOption(options.think ?? process.env.OLLAMA_THINK, false),
     });
+}
+
+async function analyzeIssues(options) {
+    const inputPath = resolve(options.input || paths.export);
+    const outPath = resolve(options.out || paths.analysis);
+    const reportPath = resolve(options.report || outPath.replace(/\.json$/i, '.md'));
+    const htmlReportPath = resolve(options.html || options['html-report'] || reportPath.replace(/\.md$/i, '.html'));
+    const exportPayload = JSON.parse(await readFile(inputPath, 'utf8'));
+    const issues = toAnalysisInput(exportPayload, options);
+    const model = await makeModel(options);
     const result = await analyzeBacklog(model, exportPayload, issues, options);
     const payload = {
         source: exportPayload.source,
         analyzedAt: new Date().toISOString(),
-        model: modelName,
+        model: options.model || DEFAULT_MODEL,
         reviewedIssueCount: issues.length,
         chunkSize: result.chunkSize,
         warnings: result.warnings,
@@ -48,15 +59,14 @@ async function analyzeIssues(options) {
 }
 
 async function synthesizeIdeasCommand(options) {
-    const inputPath = resolve(options.input || DEFAULT_ANALYSIS_PATH);
-    const outPath = resolve(options.out || DEFAULT_IDEAS_PATH);
+    const inputPath = resolve(options.input || paths.analysis);
+    const outPath = resolve(options.out || paths.ideas);
     const reportPath = resolve(options.report || outPath.replace(/\.json$/i, '.md'));
     const htmlReportPath = resolve(options.html || options['html-report'] || reportPath.replace(/\.md$/i, '.html'));
 
     const analysisPayload = JSON.parse(await readFile(inputPath, 'utf8'));
     const { analysis, source } = analysisPayload;
 
-    // Reconstruct all ranked issues across categories.
     const cats = analysis?.categories || {};
     const allRankedIssues = [
         ...(cats.josh?.rankedIssues || []),
@@ -64,22 +74,13 @@ async function synthesizeIdeasCommand(options) {
         ...(cats.rest?.rankedIssues || []),
     ];
 
-    // Optionally load source export for richer description context.
     let sourceIssues = [];
     if (options.export) {
         const exportPayload = JSON.parse(await readFile(resolve(options.export), 'utf8'));
         sourceIssues = exportPayload.issues || [];
     }
 
-    const modelName = options.model || DEFAULT_MODEL;
-    console.log(`Using model: ${modelName}`);
-    const model = await chatModel(modelName, {
-        apiKey: options['api-key'],
-        githubToken: options['github-token'],
-        ollamaUrl: options['ollama-url'],
-        think: booleanOption(options.think ?? process.env.OLLAMA_THINK, false),
-    });
-
+    const model = await makeModel(options);
     const warnings = [];
     console.error(`Synthesizing ideas for ${allRankedIssues.length} ranked issues...`);
     const ideas = await synthesizeIdeas(model, { source }, sourceIssues, allRankedIssues, [], warnings, options);
@@ -87,7 +88,7 @@ async function synthesizeIdeasCommand(options) {
     const ideasPayload = {
         source,
         synthesizedAt: new Date().toISOString(),
-        model: modelName,
+        model: options.model || DEFAULT_MODEL,
         totalIssues: allRankedIssues.length,
         ideas,
         warnings,
@@ -101,7 +102,7 @@ async function synthesizeIdeasCommand(options) {
 }
 
 async function renderReport(options) {
-    const inputPath = resolve(options.input || DEFAULT_ANALYSIS_PATH);
+    const inputPath = resolve(options.input || paths.analysis);
     const reportPath = resolve(options.report || inputPath.replace(/\.json$/i, '.md'));
     const htmlReportPath = resolve(options.html || options['html-report'] || reportPath.replace(/\.md$/i, '.html'));
     const payload = JSON.parse(await readFile(inputPath, 'utf8'));
@@ -110,14 +111,11 @@ async function renderReport(options) {
     return { reportPath, htmlReportPath, count: payload.reviewedIssueCount || payload.analysis?.summary?.totalIssuesReviewed || 0 };
 }
 
-const args = parseArgs(process.argv.slice(2));
-const command = args._[0] || 'run';
-
 try {
     if (args.help || args.h) {
         printHelp();
     } else if (command === 'export') {
-        const result = await exportIssues(args);
+        const result = await exportIssues({ ...args, project });
         console.log(`Exported ${result.count} issues to ${result.outPath}`);
     } else if (command === 'analyze') {
         const result = await analyzeIssues(args);
@@ -134,8 +132,8 @@ try {
         console.log(`Rendered report for ${result.count} issues to ${result.reportPath}`);
         console.log(`Rendered HTML report to ${result.htmlReportPath}`);
     } else if (command === 'run') {
-        const exportResult = await exportIssues({ ...args, out: args.exportOut || args.export || DEFAULT_EXPORT_PATH });
-        const analyzeResult = await analyzeIssues({ ...args, input: exportResult.outPath, out: args.out || DEFAULT_ANALYSIS_PATH });
+        const exportResult = await exportIssues({ ...args, project, out: args.exportOut || paths.export });
+        const analyzeResult = await analyzeIssues({ ...args, input: exportResult.outPath, out: args.out || paths.analysis });
         console.log(`Exported ${exportResult.count} issues to ${exportResult.outPath}`);
         console.log(`Analyzed ${analyzeResult.count} issues to ${analyzeResult.outPath}`);
         console.log(`Report written to ${analyzeResult.reportPath}`);

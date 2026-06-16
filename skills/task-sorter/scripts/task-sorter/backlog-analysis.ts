@@ -113,7 +113,7 @@ async function runWithConcurrency(tasks, concurrency) {
 export async function analyzeBacklog(model, exportPayload, issues, options) {
     const chunkSize = Math.max(1, Number(options['chunk-size'] || process.env.TASK_SORTER_CHUNK_SIZE || 5));
     const concurrency = Math.max(1, Number(options['concurrency'] || process.env.TASK_SORTER_CONCURRENCY || 5));
-    const reporterFilter = options['reporter-filter'] || 'Joshua Barron';
+    const reporterFilter = options['reporter-filter'] || process.env.TASK_SORTER_REPORTER_FILTER || 'Joshua Barron';
     const cutoffDate = new Date('2025-01-01T00:00:00.000Z');
     const warnings = [];
 

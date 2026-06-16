@@ -1,4 +1,3 @@
-import { DEFAULT_JQL, DEFAULT_EXPORT_PATH, DEFAULT_ANALYSIS_PATH, DEFAULT_REPORT_PATH, DEFAULT_HTML_REPORT_PATH } from './constants.ts';
 import { DEFAULT_MODEL } from '../../model.ts';
 
 export function booleanOption(value, defaultValue = false) {
@@ -29,11 +28,9 @@ export function printHelp() {
   bun ./scripts/task-sorter.ts run [options]
 
 Defaults:
-  JQL: ${DEFAULT_JQL}
-  Export: ${DEFAULT_EXPORT_PATH}
-  Analysis: ${DEFAULT_ANALYSIS_PATH}
-  Report: ${DEFAULT_REPORT_PATH}
-  HTML report: ${DEFAULT_HTML_REPORT_PATH}
+  Project: QIN (override with --project or TASK_SORTER_PROJECT env var; drives JQL, output filenames, and report titles)
+  JQL: derived from --project; override with --jql for custom queries
+  Output files: <project-lowercase>-backlog.{json,analysis.json,ideas.json,...} under ./out
   Model: ${DEFAULT_MODEL}
   Chunk size: 5 issues; override with --chunk-size
   Concurrency: 5 parallel chunks; override with --concurrency

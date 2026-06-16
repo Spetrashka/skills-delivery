@@ -1,5 +1,11 @@
 import { inferPlanningCategory, PLANNING_CATEGORIES, PLANNING_CATEGORY_LABELS } from './taxonomy.ts';
 
+function projectLabel(source) {
+    if (source?.projectKey) return source.projectKey;
+    const m = String(source?.jql || '').match(/\bproject\s*=\s*"?([A-Z][A-Z0-9_-]*)"?/i);
+    return m ? m[1].toUpperCase() : 'Backlog';
+}
+
 function htmlEscape(value) {
     return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
@@ -231,7 +237,7 @@ export function renderHtmlReport(payload) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>QIN Backlog Analysis</title>
+    <title>${htmlEscape(projectLabel(source))} Analysis</title>
     <style>
         :root { color-scheme: light dark; --bg: #f6f7f9; --panel: #ffffff; --text: #1f2933; --muted: #667085; --line: #d7dce2; --link: #1b63a7; }
         @media (prefers-color-scheme: dark) { :root { --bg: #181b20; --panel: #22262d; --text: #e8ecf1; --muted: #a7b0bd; --line: #3a4049; --link: #8ab4f8; } }
@@ -281,7 +287,7 @@ export function renderHtmlReport(payload) {
 </head>
 <body>
 <main>
-    <h1>QIN Backlog Analysis</h1>
+    <h1>${htmlEscape(projectLabel(source))} Analysis</h1>
     <div class="meta">
         <span>Analyzed at: ${htmlEscape(payload.analyzedAt)}</span>
         <span>Model: ${htmlEscape(payload.model)}</span>
@@ -326,7 +332,7 @@ export function renderIdeasHtmlReport(payload) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>QIN Backlog Ideas</title>
+    <title>${htmlEscape(projectLabel(source))} Ideas</title>
     <style>
         :root { color-scheme: light dark; --bg: #f6f7f9; --panel: #ffffff; --text: #1f2933; --muted: #667085; --line: #d7dce2; --link: #1b63a7; }
         @media (prefers-color-scheme: dark) { :root { --bg: #181b20; --panel: #22262d; --text: #e8ecf1; --muted: #a7b0bd; --line: #3a4049; --link: #8ab4f8; } }
@@ -350,7 +356,7 @@ export function renderIdeasHtmlReport(payload) {
 </head>
 <body>
 <main>
-    <h1>QIN Backlog Ideas</h1>
+    <h1>${htmlEscape(projectLabel(source))} Ideas</h1>
     <div class="meta">
         <span>Synthesized at: ${htmlEscape(synthesizedAt)}</span>
         <span>Model: ${htmlEscape(model)}</span>
