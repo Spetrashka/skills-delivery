@@ -20,7 +20,7 @@ bun --version
 
 Windows (PowerShell): follow https://bun.sh/docs/installation, then run `bun --version`.
 
-## Quick Start (Copilot-first)
+## Quick Start (Ollama-first)
 
 1. Install dependencies:
 
@@ -31,22 +31,21 @@ bun install
 
 2. Authenticate:
    - Jira: create `~/.config/jira-mcp/.env` (see [Auth](#auth))
-   - Copilot model token:
+   - Ollama: install Ollama and pull the default local model:
 
 ```bash
-gh auth login
-export GITHUB_TOKEN=$(gh auth token)
+ollama pull gpt-oss:20b
 ```
 
-3. Run with Copilot Claude Sonnet 4.6:
+3. Run with the default Ollama model:
 
 ```bash
-bun ./scripts/task-sorter.ts run --model copilot:claude-sonnet-4.6
+bun ./scripts/task-sorter.ts run
 ```
 
 4. In Copilot Chat, call the skill directly with a prompt like:
-   - `Use task-sorter skill: export QIN backlog and analyze with copilot:claude-sonnet-4.6`
-   - `Run task-sorter on first 50 issues with copilot:claude-sonnet-4.6 and generate md/html reports`
+   - `Use task-sorter skill: export QIN backlog and analyze with the default Ollama model`
+   - `Run task-sorter on first 50 issues with gpt-oss:20b and generate md/html reports`
 
 ### Prepare this skill from zero (copy-paste)
 
@@ -55,9 +54,8 @@ cd skills/task-sorter
 curl -fsSL https://bun.sh/install | bash
 source ~/.bashrc 2>/dev/null || true
 bun install
-gh auth login
-export GITHUB_TOKEN=$(gh auth token)
-bun ./scripts/task-sorter.ts run --model copilot:claude-sonnet-4.6 --max-issues 50
+ollama pull gpt-oss:20b
+bun ./scripts/task-sorter.ts run --max-issues 50
 ```
 
 ## Auth
@@ -79,7 +77,7 @@ Get a Jira API token at: https://id.atlassian.com/manage-profile/security/api-to
 Place model credentials in `skills/task-sorter/.env` (or export them as environment variables):
 
 ```env
-# GitHub Copilot (recommended) — OAuth token from `gh auth token`
+# GitHub Copilot — OAuth token from `gh auth token`
 GITHUB_TOKEN=gho_...
 
 # OpenAI — direct API key
@@ -126,7 +124,7 @@ The `--model` flag accepts any value from the `Model` enum in `model.ts`. The sc
 
 | `--model` value | Description |
 |---|---|
-| `copilot:claude-sonnet-4.6` *(default)* | Claude Sonnet 4.6 via Copilot |
+| `copilot:claude-sonnet-4.6` | Claude Sonnet 4.6 via Copilot |
 | `copilot:claude-sonnet-4.5` | Claude Sonnet 4.5 via Copilot |
 | `copilot:claude-opus-4.6` | Claude Opus 4.6 via Copilot |
 | `copilot:gpt-4o` | GPT-4o via Copilot |
@@ -138,14 +136,14 @@ The `--model` flag accepts any value from the `Model` enum in `model.ts`. The sc
 ## Run
 
 ```bash
-# Export and analyze in one pass (default model: copilot:claude-sonnet-4.6)
-GITHUB_TOKEN=$(gh auth token) bun ./scripts/task-sorter.ts run
+# Export and analyze in one pass (default model: gpt-5.5 via OpenAI)
+bun ./scripts/task-sorter.ts run
 
 # Use a specific model
+bun ./scripts/task-sorter.ts run --model llama3.2
 bun ./scripts/task-sorter.ts run --model copilot:gpt-4o
 bun ./scripts/task-sorter.ts run --model gpt-4.1
 bun ./scripts/task-sorter.ts run --model gemini-2.5-pro
-bun ./scripts/task-sorter.ts run --model llama3.2
 
 # Limit to first 50 issues for a quick test
 bun ./scripts/task-sorter.ts run --max-issues 50
@@ -155,7 +153,7 @@ Useful split workflow — export once, analyze multiple times with different mod
 
 ```bash
 bun ./scripts/task-sorter.ts export --out ./out/qin-backlog.json
-bun ./scripts/task-sorter.ts analyze --input ./out/qin-backlog.json --model copilot:gpt-4o
+bun ./scripts/task-sorter.ts analyze --input ./out/qin-backlog.json --model gpt-oss:20b
 ```
 
 Regenerate reports from an existing analysis JSON without calling the model again:
@@ -169,7 +167,7 @@ bun ./scripts/task-sorter.ts render --input ./out/qin-backlog.analysis.json --re
 | Option | Default | Description |
 |---|---|---|
 | `--jql` | `project=QIN AND statusCategory != Done ORDER BY Rank ASC` | Jira issue search query |
-| `--model` | `copilot:claude-sonnet-4.6` | Model name; see [Models](#models) table |
+| `--model` | `gpt-5.5` | Model name; see [Models](#models) table |
 | `--out` | command-specific file under `./out` | Output file path |
 | `--input` | latest export for `analyze`/`render` | Input JSON file |
 | `--report` | `.md` beside analysis JSON | Markdown report path |
@@ -180,6 +178,7 @@ bun ./scripts/task-sorter.ts render --input ./out/qin-backlog.analysis.json --re
 | `--max-analyze-issues` | no limit | Analyze only first N exported issues |
 | `--max-description-chars` | `2500` | Truncate descriptions sent to the model (export JSON keeps full text) |
 | `--duplicate-review-max-issues` | `250` | Maximum ranked issues sent to the final model duplicate review; larger runs keep the deterministic safety-net pass only |
+| `--idea-synthesis-max-issues` | `250` | Maximum ranked issues per idea-synthesis model call; larger backlogs are synthesized in domain batches and collapsed |
 | `--think` | `false` | Ollama thinking mode; keep disabled for structured output |
 
 ## Processing Flow
@@ -191,7 +190,8 @@ bun ./scripts/task-sorter.ts render --input ./out/qin-backlog.analysis.json --re
 5. **Classification:** the model tags each task with `workArea`, `productDomain`, `taskKind`, `planningCategory`, `systems`, `projectThemes`, and `actionBucket` using the taxonomy below. The final merge preserves the model's classification instead of replacing it with keyword rules.
 6. **Model duplicate review:** after chunk analysis, the model reviews the compact ranked backlog again to find cross-chunk duplicates or overlapping work. This is capped by `--duplicate-review-max-issues` to avoid oversized model calls.
 7. **Deterministic duplicate safety net:** after model duplicate groups are merged, a conservative token/context pass still catches obvious cross-backlog candidates. This pass is a safety net, not the primary classifier.
-8. **Output:** JSON, Markdown report, and HTML report are written under `out/` or the paths passed with `--out`, `--report`, and `--html`.
+8. **Idea synthesis:** a global reduce pass consolidates the per-chunk candidate ideas (map) into a deduplicated set of epic-level initiatives and assigns every ranked task a `core`/`supporting` role. Large backlogs are synthesized in product-domain batches and collapsed; if the model call fails or is skipped, a deterministic domain grouping is used so `ideas` always covers every task. Capped by `--idea-synthesis-max-issues`.
+9. **Output:** JSON, Markdown report, and HTML report are written under `out/` or the paths passed with `--out`, `--report`, and `--html`. The analysis JSON includes a global `ideas` array and `summary.ideaCount`.
 
 ## Classification Taxonomy
 

@@ -45,6 +45,39 @@ const ThemeItemSchema = z.object({
     notes: z.string().default(''),
 });
 
+const IdeaRole = z.enum(['core', 'supporting']);
+const IdeaScope = z.enum(['small', 'medium', 'large', 'x-large']);
+
+const RelatedIssueSchema = z.object({
+    key: z.string(),
+    role: IdeaRole.describe('Whether the issue is central (core) to delivering the idea or enabling/related (supporting).').default('supporting'),
+    reason: z.string().default(''),
+});
+
+// Lightweight candidate idea emitted per chunk during the map stage. A single chunk only
+// sees a few issues, so it cannot judge global importance/scope or the full related set.
+export const CandidateIdeaSchema = z.object({
+    title: z.string(),
+    problemStatement: z.string().default(''),
+    goal: z.string().default(''),
+    issueKeys: z.array(z.string()).describe('Issue keys from this chunk that roll up into the idea.').default([]),
+    productDomain: ProductDomainSchema.default('unknown'),
+});
+
+// Final, consolidated, global epic-level idea produced by the reduce/synthesis stage.
+export const IdeaItemSchema = z.object({
+    id: z.string().default(''),
+    title: z.string(),
+    problemStatement: z.string().default(''),
+    goal: z.string().describe('Goal or outcome the idea delivers.').default(''),
+    rationale: z.string().default(''),
+    importance: z.enum(['critical', 'high', 'medium', 'low']).default('medium'),
+    scopeEstimate: IdeaScope.describe('Coarse epic-level sizing derived from the count and complexity of related issues.').default('medium'),
+    relatedIssues: z.array(RelatedIssueSchema).default([]),
+    productDomain: ProductDomainSchema.default('unknown'),
+    notes: z.string().default(''),
+});
+
 const GroupsSchema = z.object({
     byWorkArea: z.record(z.array(z.string())).default({}),
     byProductDomain: z.record(z.array(z.string())).default({}),
@@ -67,9 +100,11 @@ export const AnalysisSchema = z.object({
         totalIssuesReviewed: z.number(),
         highPriorityCount: z.number(),
         duplicateGroupCount: z.number(),
+        ideaCount: z.number().default(0),
         overallAssessment: z.string(),
         recommendedNextStep: z.string(),
     }),
+    ideas: z.array(IdeaItemSchema).default([]),
     duplicateGroups: z.array(DuplicateGroupItemSchema).default([]),
     categories: z.object({
         josh: CategoryAnalysisSchema,
@@ -82,8 +117,13 @@ export const ChunkAnalysisSchema = z.object({
     rankedIssues: z.array(RankedIssueItemSchema),
     duplicateGroups: z.array(DuplicateGroupItemSchema).default([]),
     themes: z.array(ThemeItemSchema).default([]),
+    candidateIdeas: z.array(CandidateIdeaSchema).default([]),
 });
 
 export const DuplicateReviewSchema = z.object({
     duplicateGroups: z.array(DuplicateGroupItemSchema).default([]),
+});
+
+export const IdeaSynthesisSchema = z.object({
+    ideas: z.array(IdeaItemSchema).default([]),
 });

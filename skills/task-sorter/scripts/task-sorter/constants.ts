@@ -11,6 +11,7 @@ export const DEFAULT_EXPORT_PATH = resolve(DEFAULT_OUT_DIR, 'qin-backlog.json');
 export const DEFAULT_ANALYSIS_PATH = resolve(DEFAULT_OUT_DIR, 'qin-backlog.analysis.json');
 export const DEFAULT_REPORT_PATH = resolve(DEFAULT_OUT_DIR, 'qin-backlog.report.md');
 export const DEFAULT_HTML_REPORT_PATH = resolve(DEFAULT_OUT_DIR, 'qin-backlog.report.html');
+export const DEFAULT_IDEAS_PATH = resolve(DEFAULT_OUT_DIR, 'qin-backlog.ideas.json');
 
 export const FIELDS = [
     'summary',

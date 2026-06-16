@@ -86,6 +86,7 @@ function renderReadableOverview(analysis, categories, source) {
 
     return `<details class="sec" open><summary>Readable Overview</summary><div class="sec-body">
         <div class="metric-grid">
+            <div class="metric"><span>${analysis.ideas?.length || 0}</span><label>Ideas / epics</label></div>
             <div class="metric"><span>${immediateCount}</span><label>Immediate</label></div>
             <div class="metric"><span>${groomCount}</span><label>Groom first</label></div>
             <div class="metric"><span>${dedupeCount}</span><label>Deduplicate</label></div>
@@ -110,6 +111,23 @@ function renderReadableOverview(analysis, categories, source) {
 function badge(value) {
     const safe = htmlEscape(value || 'unknown');
     return `<span class="badge badge-${safe.replace(/[^a-z0-9_-]/gi, '-')}">${safe}</span>`;
+}
+
+function renderIdeas(ideas, source) {
+    if (!ideas?.length) return '<p class="muted">No ideas were synthesized.</p>';
+    const importanceRank = { critical: 4, high: 3, medium: 2, low: 1 };
+    const ordered = [...ideas].sort((a, b) => (importanceRank[b.importance] || 0) - (importanceRank[a.importance] || 0) || (b.relatedIssues?.length || 0) - (a.relatedIssues?.length || 0));
+    return ordered.map((idea) => {
+        const related = idea.relatedIssues || [];
+        const core = related.filter((r) => r.role === 'core').map((r) => issueHtmlLink(source, r.key)).join(', ');
+        const supporting = related.filter((r) => r.role !== 'core').map((r) => issueHtmlLink(source, r.key)).join(', ');
+        const domain = idea.productDomain && idea.productDomain !== 'unknown' ? badge(idea.productDomain) : '';
+        const meta = [idea.problemStatement ? `<p><strong>Problem:</strong> ${linkIssueKeys(source, idea.problemStatement)}</p>` : '',
+            idea.goal ? `<p><strong>Goal:</strong> ${linkIssueKeys(source, idea.goal)}</p>` : '',
+            idea.rationale ? `<p><strong>Rationale:</strong> ${linkIssueKeys(source, idea.rationale)}</p>` : '',
+            idea.notes ? `<p><strong>Notes:</strong> ${linkIssueKeys(source, idea.notes)}</p>` : ''].join('');
+        return `<details class="item" open><summary>${linkIssueKeys(source, idea.title)} ${badge(idea.importance)} ${badge(idea.scopeEstimate)} ${domain} <span class="cnt">(${related.length} task${related.length === 1 ? '' : 's'})</span></summary>${meta}<p><strong>Core:</strong> ${core || '<span class="muted">(none)</span>'}</p><p><strong>Supporting:</strong> ${supporting || '<span class="muted">(none)</span>'}</p></details>`;
+    }).join('\n');
 }
 
 function renderDuplicateCandidateRows(duplicateGroups, source) {
@@ -253,7 +271,7 @@ export function renderHtmlReport(payload) {
         .cnt { font-size: 13px; font-weight: 400; color: var(--muted); }
         .group-list { margin-top: 6px; }
         .group-list li { margin: 4px 0; }
-        .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px; }
+        .metric-grid { display: grid; grid-template-columns: repeat(5, minmax(110px, 1fr)); gap: 10px; margin-bottom: 16px; }
         .metric { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: color-mix(in srgb, var(--panel) 90%, var(--line)); }
         .metric span { display: block; font-size: 24px; font-weight: 700; line-height: 1.1; }
         .metric label { display: block; color: var(--muted); margin-top: 4px; }
@@ -277,6 +295,7 @@ export function renderHtmlReport(payload) {
     </div>
     <details class="sec" open><summary>Summary</summary><div class="sec-body"><p>${linkIssueKeys(source, analysis.summary?.overallAssessment || 'No summary provided.')}</p><p><strong>Recommended next step:</strong> ${linkIssueKeys(source, analysis.summary?.recommendedNextStep || 'No recommendation provided.')}</p></div></details>
     ${renderReadableOverview(analysis, categories, source)}
+    <details class="sec" open><summary>Ideas / Epics <span class="cnt">(${analysis.ideas?.length || 0})</span></summary><div class="sec-body">${renderIdeas(analysis.ideas, source)}</div></details>
     <details class="sec"><summary>Duplicate Candidates <span class="cnt">(${analysis.duplicateGroups?.length || 0})</span></summary><div class="sec-body"><div class="table-wrap"><table><thead><tr><th>Group</th><th>Confidence</th><th>Canonical</th><th>Candidates</th><th>Reason</th></tr></thead><tbody>${duplicateRows}</tbody></table></div></div></details>
     <details class="sec"><summary>Duplicates Detail</summary><div class="sec-body">${duplicateDetails}</div></details>
     ${renderCategory(categories.josh, source)}
@@ -295,6 +314,51 @@ export function renderHtmlReport(payload) {
         });
     })();
 </script>
+</body>
+</html>
+`;
+}
+
+export function renderIdeasHtmlReport(payload) {
+    const { source, ideas, synthesizedAt, model, totalIssues } = payload;
+    return `<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>QIN Backlog Ideas</title>
+    <style>
+        :root { color-scheme: light dark; --bg: #f6f7f9; --panel: #ffffff; --text: #1f2933; --muted: #667085; --line: #d7dce2; --link: #1b63a7; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #181b20; --panel: #22262d; --text: #e8ecf1; --muted: #a7b0bd; --line: #3a4049; --link: #8ab4f8; } }
+        body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        main { max-width: 960px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 28px; margin: 0 0 16px; }
+        a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+        .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); margin-bottom: 20px; }
+        .badge { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+        .badge-critical { border-color: #b42318; color: #b42318; }
+        .badge-high { border-color: #b54708; color: #b54708; }
+        .muted { color: var(--muted); }
+        details.item { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+        details.item > summary { cursor: pointer; font-size: 16px; font-weight: 700; list-style: none; display: flex; align-items: center; gap: 8px; }
+        details.item > summary::-webkit-details-marker { display: none; }
+        details.item > summary::before { content: '▶'; font-size: 11px; color: var(--muted); transition: transform 0.15s; flex-shrink: 0; }
+        details.item[open] > summary::before { transform: rotate(90deg); }
+        details.item p { margin: 8px 0; }
+        .cnt { font-size: 13px; font-weight: 400; color: var(--muted); }
+    </style>
+</head>
+<body>
+<main>
+    <h1>QIN Backlog Ideas</h1>
+    <div class="meta">
+        <span>Synthesized at: ${htmlEscape(synthesizedAt)}</span>
+        <span>Model: ${htmlEscape(model)}</span>
+        <span>Total issues: ${htmlEscape(totalIssues)}</span>
+        <span>Ideas: ${ideas?.length || 0}</span>
+    </div>
+    ${renderIdeas(ideas, source)}
+</main>
 </body>
 </html>
 `;

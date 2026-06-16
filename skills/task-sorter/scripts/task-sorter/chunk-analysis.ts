@@ -83,6 +83,7 @@ export function analysisMessages(exportPayload, issues) {
                 `For every ranked issue, choose one planningCategory from: ${PLANNING_CATEGORIES.join(', ')}.`,
                 `For every ranked issue, choose one actionBucket from: ${ACTION_BUCKETS.join(', ')}.`,
                 'Populate systems and projectThemes from the issue context using concise product/system names. Leave them empty only when there is no reliable signal.',
+                'Additionally propose 0-3 candidateIdeas: broad initiatives/epics that two or more of this chunk\'s issues roll up into. Each candidate idea should reference the exact issue keys it covers. Leave candidateIdeas empty when no clear multi-issue initiative spans the chunk; do not restate a single issue as an idea.',
                 'Detect duplicates and overlapping tasks conservatively. Use low confidence when evidence is weak.',
                 'Return every reviewed issue in rankedIssues exactly once unless the input is empty.',
                 'Do not include hidden reasoning, chain of thought, markdown, or prose outside the structured response.',
@@ -123,6 +124,7 @@ export function mergeChunkResults(results) {
         rankedIssues: results.flatMap((r) => r.rankedIssues || []),
         duplicateGroups: results.flatMap((r) => r.duplicateGroups || []),
         themes: mergeThemes(results.flatMap((r) => r.themes || [])),
+        candidateIdeas: results.flatMap((r) => r.candidateIdeas || []),
     };
 }
 
@@ -137,12 +139,13 @@ export async function analyzeChunkWithSplit(model, exportPayload, issues, warnin
             rankedIssues: [...(result.rankedIssues || []), ...missing],
             duplicateGroups: result.duplicateGroups || [],
             themes: result.themes || [],
+            candidateIdeas: result.candidateIdeas || [],
         };
     } catch (err) {
         if (isNonRecoverableModelError(err)) throw err;
         if (issues.length <= 1) {
             warnings.push(`Fallback used for ${issues[0]?.key}: ${safeErrorMessage(err)}`);
-            return { rankedIssues: [fallbackIssueAnalysis(issues[0], safeErrorMessage(err))], duplicateGroups: [], themes: [] };
+            return { rankedIssues: [fallbackIssueAnalysis(issues[0], safeErrorMessage(err))], duplicateGroups: [], themes: [], candidateIdeas: [] };
         }
         warnings.push(`Chunk of ${issues.length} issues failed structured parsing; splitting into smaller chunks.`);
         const middle = Math.ceil(issues.length / 2);

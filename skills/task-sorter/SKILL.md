@@ -61,7 +61,7 @@ For Copilot models, prefer `GITHUB_TOKEN=$(gh auth token)`. The Copilot API does
 ## Common Usage
 
 ```bash
-# Export and analyze the QIN non-done backlog with Ollama by default
+# Export and analyze the QIN non-done backlog with the default model (gpt-5.5 via OpenAI)
 bun ./scripts/task-sorter.ts run
 
 # Use any model from model.ts
@@ -82,6 +82,15 @@ bun ./scripts/task-sorter.ts export --out ./out/qin-backlog.json
 # Analyze a saved export only
 bun ./scripts/task-sorter.ts analyze --input ./out/qin-backlog.json --out ./out/qin-backlog.analysis.json
 
+# Re-synthesize ideas from an existing analysis JSON (dedicated output, no re-analysis needed)
+bun ./scripts/task-sorter.ts ideas --input ./out/qin-backlog.analysis.json
+
+# Ideas with richer context from the original export (passes descriptions to the model)
+bun ./scripts/task-sorter.ts ideas --input ./out/qin-backlog.analysis.json --export ./out/qin-backlog.json
+
+# Ideas with a different model or custom output path
+bun ./scripts/task-sorter.ts ideas --input ./out/qin-backlog.analysis.json --model gpt-4.1 --out ./out/qin-backlog.ideas.json
+
 # Regenerate reports from existing analysis JSON
 bun ./scripts/task-sorter.ts render --input ./out/qin-backlog.analysis.json --report ./out/qin-backlog.report.md --html ./out/qin-backlog.report.html
 
@@ -98,7 +107,7 @@ bun ./scripts/task-sorter.ts run --jql 'project=QIN AND statusCategory != Done O
 | `--input` | latest export path for `analyze` | Export file to analyze |
 | `--report` | `.md` beside analysis JSON | Markdown report path |
 | `--html` / `--html-report` | `.html` beside Markdown report | HTML report path |
-| `--model` | `copilot:claude-sonnet-4.6` | Model name from `model.ts`; `chatModel()` chooses the runtime |
+| `--model` | `gpt-5.5` | Model name from `model.ts`; `chatModel()` chooses the runtime |
 | `--think` | `false` | Ollama thinking mode; keep disabled for structured output |
 | `--chunk-size` | `5` | Number of issues analyzed per structured model call; failed chunks split smaller |
 | `--page-size` | `100` | Jira page size |
@@ -117,11 +126,14 @@ The export JSON contains:
 The analysis JSON contains:
 
 - `rankedIssues`: ordered from most important to least important
+- `ideas`: global, epic-level initiatives synthesized from the whole backlog. Each idea has a `title`, `problemStatement`, `goal`, `rationale`, `importance`, `scopeEstimate`, `productDomain`, and `relatedIssues` (each tagged `core` or `supporting` with a reason). Every ranked issue is assigned to at least one idea.
 - `duplicateGroups`: likely duplicate or overlapping work items
-- `themes`: larger product/engineering themes found in the backlog
-- `summary`: concise interpretation and recommended handling
+- `themes`: lightweight per-category product/engineering themes found in the backlog (complementary to the richer global `ideas`)
+- `summary`: concise interpretation and recommended handling, including `ideaCount` and `duplicateGroupCount`
 
 `rankedIssues` also includes classification fields for human review: `workArea`, `productDomain`, `taskKind`, `planningCategory`, `systems`, `projectThemes`, and `actionBucket`.
+
+Ideas are built with a map-reduce/collapse pattern: each chunk proposes lightweight candidate ideas during analysis (map), then a global synthesis pass consolidates them into deduplicated epics and assigns every task a `core`/`supporting` role (reduce). Large backlogs are synthesized in batches and collapsed; if the model call fails or is skipped, a deterministic product-domain grouping is used so the contract always holds.
 
 Duplicate handling has three layers:
 

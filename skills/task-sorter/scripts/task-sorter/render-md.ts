@@ -77,6 +77,7 @@ function appendReadableOverview(lines, analysis, categories, source) {
     const groomCount = issues.filter((issue) => issue.actionBucket === 'groom_first').length;
 
     lines.push('## Readable Overview', '');
+    lines.push(`- Ideas / epics: ${analysis.ideas?.length || 0}`);
     lines.push(`- Immediate work candidates: ${immediateCount}`);
     lines.push(`- Groom-first candidates: ${groomCount}`);
     lines.push(`- Issues marked for deduplication: ${dedupeCount}`);
@@ -127,6 +128,26 @@ function appendReadableOverview(lines, analysis, categories, source) {
         lines.push(`| ${group.confidence} | ${issueLink(source, group.recommendedCanonicalKey)} | ${issueLinksPreview(source, group.issueKeys || [])} | ${linkIssueKeys(source, group.reason)} |`);
     }
     lines.push('');
+}
+
+function appendIdeasSection(lines, ideas, source) {
+    if (!ideas?.length) { lines.push('No ideas were synthesized.', ''); return; }
+    const importanceRank = { critical: 4, high: 3, medium: 2, low: 1 };
+    const ordered = [...ideas].sort((a, b) => (importanceRank[b.importance] || 0) - (importanceRank[a.importance] || 0) || (b.relatedIssues?.length || 0) - (a.relatedIssues?.length || 0));
+    for (const idea of ordered) {
+        const related = idea.relatedIssues || [];
+        const core = related.filter((r) => r.role === 'core').map((r) => issueLink(source, r.key));
+        const supporting = related.filter((r) => r.role !== 'core').map((r) => issueLink(source, r.key));
+        lines.push(`### ${linkIssueKeys(source, idea.title)} — ${idea.importance} · ${idea.scopeEstimate} · ${related.length} task${related.length === 1 ? '' : 's'}`, '');
+        if (idea.problemStatement) lines.push(`- Problem: ${linkIssueKeys(source, idea.problemStatement)}`);
+        if (idea.goal) lines.push(`- Goal: ${linkIssueKeys(source, idea.goal)}`);
+        if (idea.rationale) lines.push(`- Rationale: ${linkIssueKeys(source, idea.rationale)}`);
+        if (idea.productDomain && idea.productDomain !== 'unknown') lines.push(`- Domain: ${markdownEscape(idea.productDomain)}`);
+        lines.push(`- Core tasks: ${core.join(', ') || '(none)'}`);
+        lines.push(`- Supporting tasks: ${supporting.join(', ') || '(none)'}`);
+        if (idea.notes) lines.push(`- Notes: ${linkIssueKeys(source, idea.notes)}`);
+        lines.push('');
+    }
 }
 
 function appendDuplicateCandidateSection(lines, duplicateGroups, source) {
@@ -220,6 +241,20 @@ function appendCategorySection(lines, category, source) {
     appendReasoningSection(lines, category.rankedIssues, source);
 }
 
+export function renderIdeasReport(payload) {
+    const { source, ideas, synthesizedAt, model, totalIssues } = payload;
+    const lines = [
+        '# QIN Backlog Ideas', '',
+        `- Synthesized at: ${synthesizedAt}`,
+        `- Model: ${model}`,
+        `- Total issues: ${totalIssues}`,
+        `- Ideas: ${ideas?.length || 0}`,
+        '',
+    ];
+    appendIdeasSection(lines, ideas, source);
+    return lines.join('\n');
+}
+
 export function renderMarkdownReport(payload) {
     const { source, analysis } = payload;
     const categories = analysis.categories || {};
@@ -238,6 +273,9 @@ export function renderMarkdownReport(payload) {
     ];
 
     appendReadableOverview(lines, analysis, categories, source);
+
+    lines.push('## Ideas / Epics', '');
+    appendIdeasSection(lines, analysis.ideas, source);
 
     lines.push('## Duplicate Candidates', '');
     appendDuplicateCandidateSection(lines, analysis.duplicateGroups, source);

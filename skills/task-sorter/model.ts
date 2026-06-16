@@ -58,6 +58,8 @@ export enum Model {
     COPILOT_CLAUDE_SONNET_4_6 = 'copilot:claude-sonnet-4.6',
 }
 
+export const DEFAULT_MODEL = Model.GPT5_5;
+
 function openAIModel(
     model: Model | string,
     apiKey: string | undefined,
@@ -103,7 +105,7 @@ function copilotModel(
 }
 
 export async function chatModel(
-    model: Model | string = Model.COPILOT_CLAUDE_SONNET_4_6,
+    model: Model | string = DEFAULT_MODEL,
     options?: ChatModelOptions
 ): Promise<ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI> {
     let chatModelInstance: ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI;

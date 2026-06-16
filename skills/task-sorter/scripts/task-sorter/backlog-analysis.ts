@@ -3,6 +3,7 @@ import { normalizeModelScore, alignScoreWithImportance } from './scoring.ts';
 import { mergeDuplicateGroups } from './duplicates.ts';
 import { truncateText, chunkItems, fallbackIssueAnalysis, importanceWeight, mergeChunkResults, analyzeChunkWithSplit } from './chunk-analysis.ts';
 import { reviewBacklogDuplicates } from './duplicate-review.ts';
+import { synthesizeIdeas } from './idea-synthesis.ts';
 import { inferPlanningCategory } from './taxonomy.ts';
 
 export function toAnalysisInput(exportPayload, options) {
@@ -148,6 +149,14 @@ export async function analyzeBacklog(model, exportPayload, issues, options) {
     console.error(`Reviewing duplicate candidates across ${allRankedIssues.length} ranked issues...`);
     const crossBacklogDuplicateGroups = await reviewBacklogDuplicates(model, exportPayload, issues, allRankedIssues, warnings, options);
 
+    const allCandidateIdeas = [
+        ...chunkResultsByCategory.josh,
+        ...chunkResultsByCategory.old,
+        ...chunkResultsByCategory.rest,
+    ].flatMap((r) => r.candidateIdeas || []);
+    console.error(`Synthesizing global ideas from ${allCandidateIdeas.length} candidate ideas across ${allRankedIssues.length} ranked issues...`);
+    const ideas = await synthesizeIdeas(model, exportPayload, issues, allRankedIssues, allCandidateIdeas, warnings, options);
+
     const allModelDuplicateGroups = [
         ...chunkResultsByCategory.josh.flatMap((r) => r.duplicateGroups || []),
         ...chunkResultsByCategory.old.flatMap((r) => r.duplicateGroups || []),
@@ -162,9 +171,11 @@ export async function analyzeBacklog(model, exportPayload, issues, options) {
             totalIssuesReviewed: issues.length,
             highPriorityCount,
             duplicateGroupCount: duplicateGroups.length,
-            overallAssessment: `Reviewed ${issues.length} backlog issues across 3 categories: ${categories.josh.length} by reporter, ${categories.old.length} old (pre-Jan 2025), ${categories.rest.length} rest. ${highPriorityCount} high/critical priority issues.`,
+            ideaCount: ideas.length,
+            overallAssessment: `Reviewed ${issues.length} backlog issues across 3 categories: ${categories.josh.length} by reporter, ${categories.old.length} old (pre-Jan 2025), ${categories.rest.length} rest. ${highPriorityCount} high/critical priority issues. Synthesized ${ideas.length} epic-level idea(s).`,
             recommendedNextStep: allRankedIssues[0] ? `Start with ${allRankedIssues[0].key}: ${allRankedIssues[0].suggestedAction}` : 'No issues were available for analysis.',
         },
+        ideas,
         duplicateGroups,
         categories: categoryResults,
     });
