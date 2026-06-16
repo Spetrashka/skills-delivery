@@ -51,11 +51,21 @@ function ideaSynthesisMessages(exportPayload, compactIssues, candidateIdeas) {
         {
             role: 'system',
             content: [
-                'You are consolidating an already-ranked Jira backlog into a small set of broad, epic-level Ideas (initiatives).',
-                'Merge the provided candidate ideas and the issue list into a deduplicated set of Ideas. Prefer a manageable number of broad epics over many narrow ones.',
-                'For each Idea provide: a clear title, problemStatement, goal/outcome, rationale, importance (derived from the importance and score of its member issues), and scopeEstimate (coarse epic sizing from the count and complexity of related issues).',
-                'Assign every issue in the list to at least one Idea. For each related issue set role to "core" when the issue is central to delivering the Idea, or "supporting" when it is enabling or adjacent work, and give a short reason.',
+                'You are a product strategist consolidating an already-ranked Jira backlog into a small set of broad, epic-level Ideas (initiatives).',
+                'Merge the provided candidate ideas and the issue list into a deduplicated set of Ideas. Prefer a manageable number of broad epics over many narrow ones — aim for 3-7 total.',
+                '',
+                'For each Idea write rich, human-readable descriptions that a non-technical stakeholder or engineering manager can act on:',
+                '- title: outcome-oriented, 10 words max, understandable without Jira context.',
+                '- problemStatement: 2-3 sentences — what user or business pain exists today, why it matters now, and what is at risk if it stays unresolved. Write from a product/customer perspective, not as a list of Jira issue types.',
+                '- goal: 2-3 sentences — the concrete measurable outcome when the initiative is delivered, who benefits, what changes for them, and what "done" looks like from a product perspective.',
+                '- rationale: 2-3 sentences — why these specific issues belong together as one initiative: shared root cause, same owning team, sequential dependency, or compounding risk if tackled separately.',
+                '- notes: any key risks, open decisions, external dependencies, or prerequisite work a planning team must know before committing. Omit if genuinely none.',
+                '- importance: derive from the highest importance/score among member issues.',
+                '- scopeEstimate: coarse sizing (small / medium / large / x-large) based on count and complexity of related issues.',
+                '',
+                'For each related issue set role to "core" when the issue is central to delivering the Idea, or "supporting" when it is enabling or adjacent work. Give a one-sentence reason for the role assignment.',
                 'An issue may belong to more than one Idea only when genuinely cross-cutting; otherwise pick the single best Idea.',
+                'Assign every issue in the list to at least one Idea.',
                 'Use issue keys exactly as provided. Do not invent keys. Do not include prose outside the structured response.',
             ].join('\n'),
         },
@@ -118,8 +128,14 @@ async function collapseIdeas(model, exportPayload, partialIdeas, warnings) {
                 {
                     role: 'system',
                     content: [
-                        'You are merging partial epic-level Ideas produced from separate slices of the same backlog.',
+                        'You are merging partial epic-level Ideas produced from separate slices of the same backlog into a final consolidated set.',
                         'Combine Ideas that describe the same broad initiative into a single Idea, unioning their related issues and re-tagging each issue role (core/supporting).',
+                        'When merging, rewrite the narrative fields of the merged Idea to be clear and complete — do not just concatenate fragments:',
+                        '- title: outcome-oriented, 10 words max.',
+                        '- problemStatement: 2-3 sentences from a product/customer perspective covering the full merged scope.',
+                        '- goal: 2-3 sentences describing the concrete measurable outcome for all merged issues.',
+                        '- rationale: 2-3 sentences explaining why all merged issues belong together.',
+                        '- notes: any risks, open decisions, or prerequisites relevant to the merged initiative.',
                         'Keep distinct initiatives separate. Preserve every issue key from the input across the merged Ideas. Do not invent keys or add prose outside the structured response.',
                     ].join('\n'),
                 },
@@ -247,31 +263,53 @@ export async function synthesizeIdeas(model, exportPayload, sourceIssues, ranked
     const knownKeys = new Set(rankedIssues.map((i) => i.key));
     const sourceByKey = new Map(sourceIssues.map((issue) => [issue.key, issue]));
     const dedupedCandidates = dedupeCandidateIdeas(candidateIdeas);
+    console.error(`[ideas] Starting synthesis: ${rankedIssues.length} ranked issues, ${dedupedCandidates.length} candidate idea(s) from chunks...`);
 
     let ideas = null;
     try {
         if (rankedIssues.length <= maxIssues) {
+            console.error(`[ideas] Calling model for full backlog (${rankedIssues.length} issues)...`);
             ideas = await synthesizeBatch(model, exportPayload, rankedIssues, sourceByKey, dedupedCandidates);
+            console.error(`[ideas] Model returned ${ideas.length} idea(s).`);
         } else {
             const batches = buildBatches(rankedIssues, maxIssues);
             warnings.push(`Idea synthesis split ${rankedIssues.length} issues into ${batches.length} batches (cap ${maxIssues}) and collapsed the results.`);
+            console.error(`[ideas] Backlog exceeds cap (${maxIssues}); processing ${batches.length} domain batch(es)...`);
             const partials = [];
-            for (const batch of batches) {
-                const batchKeys = new Set(batch.map((i) => i.key));
+            for (let i = 0; i < batches.length; i++) {
+                const batch = batches[i];
+                const batchKeys = new Set(batch.map((iss) => iss.key));
                 const batchCandidates = dedupedCandidates.filter((c) => (c.issueKeys || []).some((k) => batchKeys.has(k)));
-                partials.push(...(await synthesizeBatch(model, exportPayload, batch, sourceByKey, batchCandidates)));
+                console.error(`[ideas] Batch ${i + 1}/${batches.length}: ${batch.length} issues, ${batchCandidates.length} candidate(s)...`);
+                const batchIdeas = await synthesizeBatch(model, exportPayload, batch, sourceByKey, batchCandidates);
+                console.error(`[ideas] Batch ${i + 1}/${batches.length} done → ${batchIdeas.length} idea(s).`);
+                partials.push(...batchIdeas);
             }
-            ideas = partials.length > 1 ? await collapseIdeas(model, exportPayload, partials, warnings) : partials;
+            if (partials.length > 1) {
+                console.error(`[ideas] Collapsing ${partials.length} partial idea(s) across batches...`);
+                ideas = await collapseIdeas(model, exportPayload, partials, warnings);
+                console.error(`[ideas] Collapse done → ${ideas.length} merged idea(s).`);
+            } else {
+                ideas = partials;
+            }
         }
     } catch (err) {
         warnings.push(`Model idea synthesis failed: ${safeErrorMessage(err)}. Used deterministic idea grouping.`);
+        console.error(`[ideas] Model call failed (${safeErrorMessage(err)}); falling back to deterministic grouping.`);
         ideas = null;
     }
 
     if (!ideas || !ideas.length) {
-        if (Array.isArray(ideas) && !ideas.length) warnings.push('Model idea synthesis returned no ideas; used deterministic idea grouping.');
+        if (Array.isArray(ideas) && !ideas.length) {
+            warnings.push('Model idea synthesis returned no ideas; used deterministic idea grouping.');
+            console.error('[ideas] Model returned no ideas; falling back to deterministic grouping.');
+        }
         ideas = deterministicIdeas(rankedIssues);
+        console.error(`[ideas] Deterministic fallback produced ${ideas.length} idea(s).`);
     }
 
-    return finalizeIdeas(ideas, rankedIssues, knownKeys);
+    console.error(`[ideas] Finalizing coverage for ${rankedIssues.length} ranked issues...`);
+    const result = finalizeIdeas(ideas, rankedIssues, knownKeys);
+    console.error(`[ideas] Done — ${result.length} idea(s) covering all ranked issues.`);
+    return result;
 }

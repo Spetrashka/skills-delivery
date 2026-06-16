@@ -67,15 +67,15 @@ export const CandidateIdeaSchema = z.object({
 // Final, consolidated, global epic-level idea produced by the reduce/synthesis stage.
 export const IdeaItemSchema = z.object({
     id: z.string().default(''),
-    title: z.string(),
-    problemStatement: z.string().default(''),
-    goal: z.string().describe('Goal or outcome the idea delivers.').default(''),
-    rationale: z.string().default(''),
+    title: z.string().describe('Outcome-oriented initiative title a non-technical stakeholder would understand. 10 words max.'),
+    problemStatement: z.string().describe('2-3 sentences: what user/business pain or gap exists today, why it matters, and what is at risk if it stays unresolved. Write from a product or customer perspective, not as a list of issue types.').default(''),
+    goal: z.string().describe('2-3 sentences: the concrete, measurable outcome when this initiative is delivered — who benefits, what changes for them, and what "done" looks like.').default(''),
+    rationale: z.string().describe('2-3 sentences: why these specific issues belong together as one initiative — shared root cause, same owning team, sequential dependency, or compounding risk if tackled separately.').default(''),
     importance: z.enum(['critical', 'high', 'medium', 'low']).default('medium'),
     scopeEstimate: IdeaScope.describe('Coarse epic-level sizing derived from the count and complexity of related issues.').default('medium'),
     relatedIssues: z.array(RelatedIssueSchema).default([]),
     productDomain: ProductDomainSchema.default('unknown'),
-    notes: z.string().default(''),
+    notes: z.string().describe('Optional: key risks, open decisions, external dependencies, or prerequisite work a planning team needs to know before committing to this initiative. Leave empty if none.').default(''),
 });
 
 const GroupsSchema = z.object({

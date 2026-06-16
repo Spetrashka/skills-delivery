@@ -83,7 +83,7 @@ export function analysisMessages(exportPayload, issues) {
                 `For every ranked issue, choose one planningCategory from: ${PLANNING_CATEGORIES.join(', ')}.`,
                 `For every ranked issue, choose one actionBucket from: ${ACTION_BUCKETS.join(', ')}.`,
                 'Populate systems and projectThemes from the issue context using concise product/system names. Leave them empty only when there is no reliable signal.',
-                'Additionally propose 0-3 candidateIdeas: broad initiatives/epics that two or more of this chunk\'s issues roll up into. Each candidate idea should reference the exact issue keys it covers. Leave candidateIdeas empty when no clear multi-issue initiative spans the chunk; do not restate a single issue as an idea.',
+                'Additionally propose 0-3 candidateIdeas: broad initiatives/epics that two or more of this chunk\'s issues roll up into. For each candidate write a descriptive title (outcome-oriented, 10 words max), a one-sentence problemStatement (user/business pain), and a one-sentence goal (what "done" looks like). Reference the exact issue keys it covers. Leave candidateIdeas empty when no clear multi-issue initiative spans the chunk; do not restate a single issue as an idea.',
                 'Detect duplicates and overlapping tasks conservatively. Use low confidence when evidence is weak.',
                 'Return every reviewed issue in rankedIssues exactly once unless the input is empty.',
                 'Do not include hidden reasoning, chain of thought, markdown, or prose outside the structured response.',
